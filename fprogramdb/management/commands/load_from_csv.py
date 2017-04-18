@@ -8,6 +8,7 @@ import sys
 import urllib2
 
 import csv
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.db import transaction
@@ -57,8 +58,10 @@ sourcefile = {
     },
 }
 
-# TODO use a variable from django settings
-xml_dir = 'CordisTools/xml_files'
+if settings.FPROGRAMDB_DIR:
+    xml_dir = settings.FPROGRAMDB_DIR
+else:
+    xml_dir = settings.STATICFILES_DIRS[0]
 #TODO handle script output with django loggers
 
 class Command(BaseCommand):

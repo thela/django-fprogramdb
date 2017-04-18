@@ -26,20 +26,23 @@ Install FProgramDB::
         ...
         'fprogramdb',
     ]
+2. OPTIONAL add a folder to store downloaded cached files to your INSTALLED_APPS:
 
-2. OPTIONAL Include the fprogramdb example pages, with URLconf in your project urls.py like this::
+    FPROGRAMDB_DIR = os.path.join(BASE_DIR, "static")
+
+it defaults to the first directory listed in STATICFILES_DIRS.
+3. OPTIONAL Include the fprogramdb example pages, with URLconf in your project urls.py like this::
 
     url(r'^fprogramdb/', include('fprogramdb.urls')),
 
-3. Run `python manage.py migrate` to create the fprogramdb models.
+4. Run `python manage.py migrate` to create the fprogramdb models.
 
-4. Run `python manage.py load_from_csv` to load H2020 database from cordis to the model. It prints its progress on
+5. Run `python manage.py load_from_csv` to load H2020 database from cordis to the model. It prints its progress on
 command line.
 
-5. If the example webpages are enabled,start the development server server and visit
+6. If the example webpages are enabled,start the development server server and visit
 <http://127.0.0.1:8000/fprogramdb/fpH2020> to get a list of all projects loaded from H2020
 
-6. Visit to participate in the poll.
 
 Disclaimer
 ----------
