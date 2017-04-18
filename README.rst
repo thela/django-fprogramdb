@@ -23,19 +23,19 @@ Quick start
         'fprogramdb',
     ]
 
-1bis. - OPTIONAL - Include the fprogramdb example pages, with URLconf in your project urls.py like this::
+2. OPTIONAL Include the fprogramdb example pages, with URLconf in your project urls.py like this::
 
     url(r'^fprogramdb/', include('fprogramdb.urls')),
 
-2. Run `python manage.py migrate` to create the fprogramdb models.
+3. Run `python manage.py migrate` to create the fprogramdb models.
 
-3. Run `python manage.py load_from_csv` to load H2020 database from cordis to the model. It prints its progress on
+4. Run `python manage.py load_from_csv` to load H2020 database from cordis to the model. It prints its progress on
 command line.
 
-4. If the example webpages are enabled,start the development server server and visit
+5. If the example webpages are enabled,start the development server server and visit
 <http://127.0.0.1:8000/fprogramdb/fpH2020> to get a list of all projects loaded from H2020
 
-5. Visit to participate in the poll.
+6. Visit to participate in the poll.
 
 Disclaimer
 ----------
