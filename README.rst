@@ -16,6 +16,10 @@ Detailed documentation will be in the "docs" directory.
 Quick start
 -----------
 
+Install FProgramDB::
+
+    pip install git+https://github.com/thela/django-fprogramdb
+
 1. Add "fprogramdb" to your INSTALLED_APPS setting like this::
 
     INSTALLED_APPS = [
