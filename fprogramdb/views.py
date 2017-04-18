@@ -1,0 +1,43 @@
+from django.shortcuts import render
+
+from fprogramdb.models import Partner, PartnerProject, Project
+
+
+# TODO use a base template that can be set in django settings
+def project_list_fp(request, fp):
+    projects = Project.objects.filter(fp=fp).order_by('startDate')
+    return render(request, "fprogramdb/project_list_fp.html", {
+        'title': 'List of projects within {fp}'.format(fp=fp),
+        'projects': [
+            {
+                'data': [_p.fp, _p.acronym, _p.startDate, _p.ecMaxContribution],
+                'rcn': _p.rcn
+            }
+            for _p in projects],
+    })
+
+
+def project_list_pic(request, pic):
+    partnerprojects = PartnerProject.objects.filter(partner__pic=pic).order_by('project__startDate')
+    partner = Partner.objects.get(pic=pic)
+    return render(request, "fprogramdb/project_list_pic.html", {
+        'title': 'List of project with {acronym} in partnership'.format(acronym=partner.shortName),
+        'projects': [
+            {
+                'data': [pp.project.fp, pp.project.acronym, pp.project.startDate, pp.ecContribution, pp.coordinator],
+                'rcn': pp.project.rcn
+            }
+            for pp in partnerprojects],
+        'partner': partner
+    })
+
+
+def project_data_rcn(request, rcn):
+    project = Project.objects.get(
+        rcn=rcn
+    )
+    return render(request, "fprogramdb/project_data_rcn.html", {
+        'title': 'Detail of project {acronym}'.format(acronym=project.acronym),
+        'project': project,
+        'partnerprojects': PartnerProject.objects.filter(project=project)
+    })
