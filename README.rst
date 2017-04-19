@@ -4,7 +4,7 @@ FProgramDB
 
 
 FProgramDB is a Django app that uses CORDIS data available on the European Open Data Portal (EUODP -
-<https://data.europa.eu/euodp>) to create a local database of Projects funded by the European Commission (EC).
+https://data.europa.eu/euodp) to create a local database of Projects funded by the European Commission (EC).
 
 It is a work-in-progress proof of concept app, not suitable for analysis by itself in its current form.
 
@@ -53,9 +53,9 @@ FProgramDB is, at the moment, a proof of concept:
 - It *does NOT* ship with any data from the EC CORDIS Database.
 - It *does NOT* aim at representing what is really happening at a EC level in respect of Research Funding.
 
-It does, however, allow to make use of data freely available on the <https://data.europa.eu/euodp> regarding EC Research
+It does, however, allow to make use of data freely available on the https://data.europa.eu/euodp regarding EC Research
 Funding, and for that data (downloaded at runtime) applies the © European Union, 1995-2017 and the legal notice found at
-this link: <https://ec.europa.eu/info/legal-notice_en>.
+this link: https://ec.europa.eu/info/legal-notice_en.
 
 Data as loaded by FProgramDB app is not suitable for analisys without preprocessing. Especially critical is the database
 part related to the organizations list. In fact, the organizations list related to H2020 is quite clean, as the CE put a

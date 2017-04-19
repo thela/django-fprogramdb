@@ -17,7 +17,7 @@ from django.conf.urls import url, include
 from . import views
 
 fpdb_patterns = ([
-    url(r'^fp(?P<fp>[\w][0-9]+)', views.project_list_fp, name="project_list_fp"),
+    url(r'^fp(?P<fp>[\D][\w]+)', views.project_list_fp, name="project_list_fp"),
     url(r'^pic(?P<pic>[0-9]+)', views.project_list_pic, name="project_list_pic"),
     url(r'^rcn(?P<rcn>[0-9]+)', views.project_data_rcn, name="project_data_rcn"),
 ], 'fprogramdb')
