@@ -15,7 +15,7 @@ setup(
     license='GNU General Public License v3 (GPLv3)',  # example license
     description='A test Django app to structure and get CORDIS data.',
     long_description=README,
-    #url='https://www.example.com/',
+    url='https://github.com/thela/django-fprogramdb',
     author='Luigi Mazari Villanova',
     author_email='luigi.mazari@cnr.it',
     classifiers=[

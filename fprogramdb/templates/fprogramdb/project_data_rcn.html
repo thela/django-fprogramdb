@@ -1,4 +1,4 @@
-{% extends "fprogramdb/base.html" %}
+{% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
 
 {% block content %}
     <h1><a href="http://cordis.europa.eu/project/rcn/{{project.rcn}}_en.html">{{project.title}} - {{project.acronym}}</a></h1>
@@ -18,7 +18,11 @@
     <p>topic {{project.topic}}</p>
     <p>{% for partnerproject in partnerprojects %}
 
-            <a href="{% if partnerproject.partner.pic %}{% url 'fprogramdb:project_list_pic' pic=partnerproject.partner.pic %}{% endif %}">
+            <a href="{% if partnerproject.partner.pic %}
+                    {% url 'fprogramdb:project_list_pic' pic=partnerproject.partner.pic %}
+                {% else %}
+                    {% url 'fprogramdb:project_list_id' partner_id=partnerproject.partner.id %}
+                {% endif %}">
             {% if partnerproject.partner.shortName %}
                 {{partnerproject.partner.shortName}}
             {% else %}
