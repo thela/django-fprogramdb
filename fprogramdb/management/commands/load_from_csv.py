@@ -3,11 +3,14 @@ from __future__ import print_function
 
 import datetime
 import os
+import posixpath
 
 import sys
 import urllib2
 
 import csv
+import urlparse
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -18,43 +21,36 @@ from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerP
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+
 sourceurls = {
     'H2020': {
-        'organizations': "http://cordis.europa.eu/data/cordis-h2020organizations.csv",
-        'projects': "http://cordis.europa.eu/data/cordis-h2020projects.csv",
-        'programmes': 'http://cordis.europa.eu/data/reference/cordisref-H2020programmes.csv',
-        'topics': 'http://cordis.europa.eu/data/reference/cordisref-H2020topics.csv',
+        'organizations': ["http://cordis.europa.eu/data/cordis-h2020organizations.csv",
+                          "http://data.europa.eu/euodp/en/data/dataset/cordisH2020projects.rdf"],
+        'projects': ["http://cordis.europa.eu/data/cordis-h2020projects.csv",
+                     "http://data.europa.eu/euodp/en/data/dataset/cordisH2020projects.rdf"],
+        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-H2020programmes.csv',
+                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+        'topics': ['http://cordis.europa.eu/data/reference/cordisref-H2020topics.csv',
+                   "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
     },
     'FP7': {
-        'organizations': "http://cordis.europa.eu/data/cordis-fp7organizations.csv",
-        'projects': "http://cordis.europa.eu/data/cordis-fp7projects.csv",
-        'programmes': 'http://cordis.europa.eu/data/reference/cordisref-FP7programmes.csv',
-        'topics': 'http://cordis.europa.eu/data/reference/cordisref-FP7topics.csv',
+        'organizations': ["http://cordis.europa.eu/data/cordis-fp7organizations.csv",
+                          "http://data.europa.eu/euodp/en/data/dataset/cordisfp7projects.rdf"],
+        'projects': ["http://cordis.europa.eu/data/cordis-fp7projects.csv",
+                     "http://data.europa.eu/euodp/en/data/dataset/cordisfp7projects.rdf"],
+        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP7programmes.csv',
+                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+        'topics': ['http://cordis.europa.eu/data/reference/cordisref-FP7topics.csv',
+                   "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
     },
     'FP6': {
-        'programmes': 'http://cordis.europa.eu/data/reference/cordisref-FP6programmes.csv',
-        'organizations': "http://cordis.europa.eu/data/cordis-fp6organizations.csv",
-        'projects': "http://cordis.europa.eu/data/cordis-fp6projects.csv"
-    },
-}
-
-sourcefile = {
-    'H2020': {
-        'organizations': "cordis-h2020organizations.csv",
-        'projects': "cordis-h2020projects.csv",
-        'programmes': 'cordisref-H2020programmes.csv',
-        'topics': 'cordisref-H2020topics.csv',
-    },
-    'FP7': {
-        'organizations': "cordis-fp7organizations.csv",
-        'projects': "cordis-fp7projects.csv",
-        'programmes': 'cordisref-FP7programmes.csv',
-        'topics': 'cordisref-FP7topics.csv',
-    },
-    'FP6': {
-        'organizations': "cordis-fp6organizations.csv",
-        'projects': "cordis-fp6projects.csv",
-        'programmes': 'cordisref-FP6programmes.csv',
+        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP6programmes.csv',
+                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+        'organizations': ["http://cordis.europa.eu/data/cordis-fp6organizations.csv",
+                          "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
+        'projects': [
+            "http://cordis.europa.eu/data/cordis-fp6projects.csv",
+            "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
     },
 }
 
@@ -63,6 +59,13 @@ if settings.FPROGRAMDB_DIR:
 else:
     xml_dir = settings.STATICFILES_DIRS[0]
 #TODO handle script output with django loggers
+
+
+def get_filename_from_uri(uri):
+    return posixpath.basename(
+            urlparse.urlsplit("http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf").path
+        )
+
 
 class Command(BaseCommand):
     def programmes_to_objects(self, fp='H2020'):
@@ -513,12 +516,12 @@ class Command(BaseCommand):
 
     def download_file(self, data, fp='H2020'):
         try:
-            csv_urlfile = urllib2.urlopen(sourceurls[fp][data])
+            csv_urlfile = urllib2.urlopen(sourceurls[fp][data][0])
             with open(os.path.join(xml_dir, sourcefile[fp][data]), 'wb') as csvfile:
                 csvfile.write(csv_urlfile.read())
-            print('{file} downloaded'.format(file=sourceurls[fp][data]))
+            print('{file} downloaded'.format(file=sourceurls[fp][data][0]))
         except urllib2.HTTPError:
-            print('{file} not found'.format(file=sourceurls[fp][data]))
+            print('{file} not found'.format(file=sourceurls[fp][data][0]))
 
     def read_csv_lists(self, fp='H2020', cached=True):
         """
@@ -528,9 +531,11 @@ class Command(BaseCommand):
         """
         for data in ['organizations', 'projects', 'programmes', 'topics']:
             if data != 'topics' or (data == 'topics' and fp == 'H2020'):
-                if not cached or not os.path.exists(os.path.join(xml_dir, sourcefile[fp][data])):
+                if not cached or not os.path.exists(os.path.join(
+                        xml_dir,
+                        get_filename_from_uri(sourceurls[fp][data][0]))):
                     self.download_file(data, fp)
-                with open(os.path.join(xml_dir, sourcefile[fp][data]), 'rb') as csvfile:
+                with open(os.path.join(xml_dir, get_filename_from_uri(sourceurls[fp][data][0])), 'rb') as csvfile:
                     self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
 
     def read_fp(self, fp='H2020', cached=True):
