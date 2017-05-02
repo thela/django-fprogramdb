@@ -36,7 +36,7 @@ class Partner(models.Model):
     country = models.CharField(max_length=8, blank=True, null=True)
     postalCode = models.CharField(max_length=8, blank=True, null=True)
 
-    merged = models.Bool(default=False)
+    merged = models.BooleanField(default=False)
     merged_ids = models.CharField(validators=validate_comma_separated_integer_list, blank=True, null=True)
 
     def __unicode__(self):
