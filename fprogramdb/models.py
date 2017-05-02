@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.core.validators import validate_comma_separated_integer_list
 from django.db import models
 
 FP_CODE = (
@@ -9,8 +10,13 @@ FP_CODE = (
 )
 
 
+class SourceFile(models.Model):
+    euodp_url = models.URLField()
+    file_url = models.URLField()
+    update_date = models.DateField(blank=True, null=True)
+
+
 class Partner(models.Model):
-    # TODO method for joining separate partner instances
     # TODO keep track of inherited deletions
     # TODO warn for potential loss of external models
     CATEGORY_CODE = (
@@ -29,6 +35,9 @@ class Partner(models.Model):
     city = models.CharField(max_length=200, blank=True, null=True)
     country = models.CharField(max_length=8, blank=True, null=True)
     postalCode = models.CharField(max_length=8, blank=True, null=True)
+
+    merged = models.Bool(default=False)
+    merged_ids = models.CharField(validators=validate_comma_separated_integer_list, blank=True, null=True)
 
     def __unicode__(self):
         if self.shortName:

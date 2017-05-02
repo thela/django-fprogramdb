@@ -16,7 +16,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.db import transaction
 
-from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject
+from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, SourceFile
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -58,13 +58,68 @@ if settings.FPROGRAMDB_DIR:
     xml_dir = settings.FPROGRAMDB_DIR
 else:
     xml_dir = settings.STATICFILES_DIRS[0]
-#TODO handle script output with django loggers
+# TODO handle script output with django loggers
 
 
 def get_filename_from_uri(uri):
     return posixpath.basename(
             urlparse.urlsplit("http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf").path
         )
+
+
+def download_file(uri, filename):
+    try:
+        csv_urlfile = urllib2.urlopen(uri)
+        with open(os.path.join(xml_dir, filename), 'wb') as csvfile:
+            csvfile.write(csv_urlfile.read())
+        print('{file} downloaded'.format(file=filename))
+    except urllib2.HTTPError:
+        print('{file} not found'.format(file=filename))
+
+
+def check_updates(rdf_url, file_uri_to_check=''):
+    import rdflib
+    from rdflib.namespace import DCTERMS
+
+    graph = rdflib.Graph()
+    graph.load(rdf_url)
+    _res = {}
+    # search for nodes that hold accessURLs (i.e. resources)
+    for trip in graph.triples((None, rdflib.term.URIRef(u'http://www.w3.org/ns/dcat#accessURL'), None)):  # ]]
+        bnode = trip[0]
+
+        # filter nodes that hold csv resources
+        if (
+                bnode,
+                rdflib.term.URIRef(u'http://data.europa.eu/euodp/ontologies/ec-odp#distributionFormat'),
+                rdflib.term.Literal(u'text/csv')) in graph.triples((bnode, None, None)):
+            if file_uri_to_check and (
+                    bnode,
+                    rdflib.term.URIRef(u'http://www.w3.org/ns/dcat#accessURL'),
+                    rdflib.term.Literal(file_uri_to_check,
+                                        datatype=rdflib.term.URIRef(u'http://www.w3.org/2001/XMLSchema#anyURI'))
+            ) in graph.triples((bnode, None, None)):
+                return datetime.datetime.strptime(
+                    graph.value(bnode, DCTERMS.modified, None)[:19],
+                    "%Y-%m-%dT%H:%M:%S") if graph.value(bnode, DCTERMS.modified, None) else datetime.datetime.strptime(
+                    graph.value(bnode, DCTERMS.issued, None)[:19], "%Y-%m-%dT%H:%M:%S")
+            else:
+                # modified
+                if graph.value(bnode, DCTERMS.modified, None):
+                    _res[
+                        str(graph.value(
+                            bnode,
+                            rdflib.term.URIRef(u'http://www.w3.org/ns/dcat#accessURL'),
+                            None))] = datetime.datetime.strptime(
+                        graph.value(bnode, DCTERMS.modified, None)[:19],
+                        "%Y-%m-%dT%H:%M:%S")
+                else:
+                    _res[str(graph.value(
+                        bnode,
+                        rdflib.term.URIRef(u'http://www.w3.org/ns/dcat#accessURL'),
+                        None))] = datetime.datetime.strptime(graph.value(bnode, DCTERMS.issued, None)[:19],
+                                                             "%Y-%m-%dT%H:%M:%S")
+    return _res
 
 
 class Command(BaseCommand):
@@ -514,28 +569,51 @@ class Command(BaseCommand):
         print('{fp} - {new} organizations created'.format(
             fp=fp, new=_new))
 
-    def download_file(self, data, fp='H2020'):
-        try:
-            csv_urlfile = urllib2.urlopen(sourceurls[fp][data][0])
-            with open(os.path.join(xml_dir, sourcefile[fp][data]), 'wb') as csvfile:
-                csvfile.write(csv_urlfile.read())
-            print('{file} downloaded'.format(file=sourceurls[fp][data][0]))
-        except urllib2.HTTPError:
-            print('{file} not found'.format(file=sourceurls[fp][data][0]))
-
-    def read_csv_lists(self, fp='H2020', cached=True):
+    def read_csv_lists(self, fp='H2020', use_cached=True, update_only=False):
         """
         read/download files related to fp and stores the results in lists
         :param fp: framework string
-        :param cached: if to use files already downloaded
+        :param use_cached: if to use files already downloaded
+        :param update_only: downloads resource if updated online
         """
         for data in ['organizations', 'projects', 'programmes', 'topics']:
+            _filename = get_filename_from_uri(sourceurls[fp][data][0])
+            update_date = ''
+            if update_only:
+                update_date = check_updates(
+                    rdf_url=sourceurls[fp][data][1],
+                    file_uri_to_check=sourceurls[fp][data][0]
+                )
+
+            try:
+                sourcefile = SourceFile.objects.get(
+                    file_url=sourceurls[fp][data][0]
+                )
+            except SourceFile:
+                sourcefile = SourceFile()
+
+                sourcefile.euodp_url = sourceurls[fp][data][1]
+                sourcefile.file_url = sourceurls[fp][data][0]
+                sourcefile.save()
+
             if data != 'topics' or (data == 'topics' and fp == 'H2020'):
-                if not cached or not os.path.exists(os.path.join(
-                        xml_dir,
-                        get_filename_from_uri(sourceurls[fp][data][0]))):
-                    self.download_file(data, fp)
-                with open(os.path.join(xml_dir, get_filename_from_uri(sourceurls[fp][data][0])), 'rb') as csvfile:
+                if (not use_cached or
+                        not os.path.exists(os.path.join(
+                            xml_dir,
+                            _filename)
+                        ) or
+                        (update_only and update_date > sourcefile.update_date)
+                ):
+
+                    download_file(sourceurls[fp][data][0], _filename)
+
+                    sourcefile.update_date = update_date if update_date else check_updates(
+                        rdf_url=sourceurls[fp][data][1],
+                        file_uri_to_check=sourceurls[fp][data][0]
+                    )
+                    sourcefile.save()
+
+                with open(os.path.join(xml_dir, _filename), 'rb') as csvfile:
                     self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
 
     def read_fp(self, fp='H2020', cached=True):
