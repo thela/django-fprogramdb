@@ -21,6 +21,7 @@ class SourceFile(models.Model):
 
 class Partner(models.Model):
     # TODO keep track of inherited deletions
+    
     # TODO warn for potential loss of external models
     CATEGORY_CODE = (
         (u'PRC', u'Private for-profit entities (excluding Higher or Secondary Education Establishments)'),
