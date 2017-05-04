@@ -63,7 +63,7 @@ else:
 
 def get_filename_from_uri(uri):
     return posixpath.basename(
-            urlparse.urlsplit("http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf").path
+            urlparse.urlsplit(uri).path
         )
 
 
@@ -589,7 +589,7 @@ class Command(BaseCommand):
                 sourcefile = SourceFile.objects.get(
                     file_url=sourceurls[fp][data][0]
                 )
-            except SourceFile:
+            except SourceFile.DoesNotExist:
                 sourcefile = SourceFile()
 
                 sourcefile.euodp_url = sourceurls[fp][data][1]
@@ -597,12 +597,25 @@ class Command(BaseCommand):
                 sourcefile.save()
 
             if data != 'topics' or (data == 'topics' and fp == 'H2020'):
-                if (not use_cached or
-                        not os.path.exists(os.path.join(
+                print (fp, data)
+                print( os.path.join(
+                            xml_dir,
+                            _filename))
+                print( os.path.exists(os.path.join(
+                            xml_dir,
+                            _filename)))
+                print(not os.path.exists(os.path.join(
                             xml_dir,
                             _filename)
                         ) or
-                        (update_only and update_date > sourcefile.update_date)
+                        not use_cached
+                    or (update_only and update_date > sourcefile.update_date))
+                if (not os.path.exists(os.path.join(
+                            xml_dir,
+                            _filename)
+                        ) or
+                        not use_cached
+                    or (update_only and update_date > sourcefile.update_date)
                 ):
 
                     download_file(sourceurls[fp][data][0], _filename)

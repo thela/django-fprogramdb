@@ -15,6 +15,9 @@ class SourceFile(models.Model):
     file_url = models.URLField()
     update_date = models.DateField(blank=True, null=True)
 
+    def __unicode__(self):
+        return self.euodp_url
+
 
 class Partner(models.Model):
     # TODO keep track of inherited deletions
@@ -37,7 +40,8 @@ class Partner(models.Model):
     postalCode = models.CharField(max_length=8, blank=True, null=True)
 
     merged = models.BooleanField(default=False)
-    merged_ids = models.CharField(validators=validate_comma_separated_integer_list, blank=True, null=True)
+    merged_ids = models.CharField(max_length=200, validators=[validate_comma_separated_integer_list], blank=True,
+                                  null=True)
 
     def __unicode__(self):
         if self.shortName:
