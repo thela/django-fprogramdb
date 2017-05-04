@@ -39,6 +39,7 @@ class Partner(models.Model):
     country = models.CharField(max_length=8, blank=True, null=True)
     postalCode = models.CharField(max_length=8, blank=True, null=True)
 
+    # not yet used, to monitor merging of organizations
     merged = models.BooleanField(default=False)
     merged_ids = models.CharField(max_length=200, validators=[validate_comma_separated_integer_list], blank=True,
                                   null=True)

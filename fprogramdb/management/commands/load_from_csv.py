@@ -51,6 +51,8 @@ sourceurls = {
         'projects': [
             "http://cordis.europa.eu/data/cordis-fp6projects.csv",
             "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
+        'topics': ['',
+                   ""],
     },
 }
 
@@ -578,44 +580,45 @@ class Command(BaseCommand):
         """
         for data in ['organizations', 'projects', 'programmes', 'topics']:
             _filename = get_filename_from_uri(sourceurls[fp][data][0])
-            update_date = ''
-            if update_only:
-                update_date = check_updates(
-                    rdf_url=sourceurls[fp][data][1],
-                    file_uri_to_check=sourceurls[fp][data][0]
-                )
-
-            try:
-                sourcefile = SourceFile.objects.get(
-                    file_url=sourceurls[fp][data][0]
-                )
-            except SourceFile.DoesNotExist:
-                sourcefile = SourceFile()
-
-                sourcefile.euodp_url = sourceurls[fp][data][1]
-                sourcefile.file_url = sourceurls[fp][data][0]
-                sourcefile.save()
-
-            if data != 'topics' or (data == 'topics' and fp == 'H2020'):
-
-                if (not os.path.exists(os.path.join(
-                            xml_dir,
-                            _filename)
-                        ) or
-                        not use_cached
-                    or (update_only and update_date > sourcefile.update_date)
-                ):
-
-                    download_file(sourceurls[fp][data][0], _filename)
-
-                    sourcefile.update_date = update_date if update_date else check_updates(
+            if _filename:
+                update_date = ''
+                if update_only:
+                    update_date = check_updates(
                         rdf_url=sourceurls[fp][data][1],
                         file_uri_to_check=sourceurls[fp][data][0]
                     )
+
+                try:
+                    sourcefile = SourceFile.objects.get(
+                        file_url=sourceurls[fp][data][0]
+                    )
+                except SourceFile.DoesNotExist:
+                    sourcefile = SourceFile()
+
+                    sourcefile.euodp_url = sourceurls[fp][data][1]
+                    sourcefile.file_url = sourceurls[fp][data][0]
                     sourcefile.save()
 
-                with open(os.path.join(xml_dir, _filename), 'rb') as csvfile:
-                    self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
+                if data != 'topics' or (data == 'topics' and fp == 'H2020'):
+
+                    if (not os.path.exists(os.path.join(
+                                xml_dir,
+                                _filename)
+                            ) or
+                            not use_cached
+                        or (update_only and update_date > sourcefile.update_date)
+                    ):
+
+                        download_file(sourceurls[fp][data][0], _filename)
+
+                        sourcefile.update_date = update_date if update_date else check_updates(
+                            rdf_url=sourceurls[fp][data][1],
+                            file_uri_to_check=sourceurls[fp][data][0]
+                        )
+                        sourcefile.save()
+
+                    with open(os.path.join(xml_dir, _filename), 'rb') as csvfile:
+                        self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
 
     def read_fp(self, fp='H2020', cached=True):
         """
