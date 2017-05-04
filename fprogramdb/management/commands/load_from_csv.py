@@ -85,7 +85,7 @@ def check_updates(rdf_url, file_uri_to_check=''):
     graph.load(rdf_url)
     _res = {}
     # search for nodes that hold accessURLs (i.e. resources)
-    for trip in graph.triples((None, rdflib.term.URIRef(u'http://www.w3.org/ns/dcat#accessURL'), None)):  # ]]
+    for trip in graph.triples((None, rdflib.term.URIRef(u'http://www.w3.org/ns/dcat#accessURL'), None)):
         bnode = trip[0]
 
         # filter nodes that hold csv resources
@@ -597,19 +597,7 @@ class Command(BaseCommand):
                 sourcefile.save()
 
             if data != 'topics' or (data == 'topics' and fp == 'H2020'):
-                print (fp, data)
-                print( os.path.join(
-                            xml_dir,
-                            _filename))
-                print( os.path.exists(os.path.join(
-                            xml_dir,
-                            _filename)))
-                print(not os.path.exists(os.path.join(
-                            xml_dir,
-                            _filename)
-                        ) or
-                        not use_cached
-                    or (update_only and update_date > sourcefile.update_date))
+
                 if (not os.path.exists(os.path.join(
                             xml_dir,
                             _filename)
