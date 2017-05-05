@@ -9,7 +9,6 @@ else:
     fprogramdb_basetemplate = "fprogramdb/base.html"
 
 
-# TODO use a base template that can be set in django settings
 def project_list_fp(request, fp):
     projects = Project.objects.filter(fp=fp).order_by('startDate')
     return render(request, "fprogramdb/project_list_fp.html", {
