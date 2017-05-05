@@ -1,12 +1,20 @@
 {% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
 
 {% block content %}
-{{partner}}
-<table>{% for project_row in projects %}
-    <tr>
-        {% for item in project_row.data %}
-            <td><a href="{% url 'fprogramdb:project_data_rcn' rcn=project_row.rcn %}">{{item}}</a></td>
-        {% endfor %}
-    </tr>
-{% endfor %}</table>
+    {{partner}}
+    <table>
+        <thead>
+            <tr>
+                <th>fp</th><th>acronym</th><th>startDate</th><th>ecContribution</th><th>coordinator?</th>
+            </tr>
+        </thead>
+
+        <tbody>{% for project_row in projects %}
+            <tr>
+                {% for item in project_row.data %}
+                    <td><a href="{% url 'fprogramdb:project_data_rcn' rcn=project_row.rcn %}">{{item}}</a></td>
+                {% endfor %}
+            </tr>
+        {% endfor %}</tbody>
+    </table>
 {% endblock %}
