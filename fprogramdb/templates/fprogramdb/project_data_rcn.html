@@ -2,7 +2,7 @@
 
 {% block content %}
     <h1><a href="http://cordis.europa.eu/project/rcn/{{project.rcn}}_en.html">{{project.title}} - {{project.acronym}}</a></h1>
-    <p>fp {{project.fp}}</p>
+    <p>fp <a href="{% url 'fprogramdb:project_list_fp' fp=project.fp %}">{{project.fp}}</a></p>
     <p>rcn {{project.rcn}}</p>
     <p>GA {{project.GA}}</p>
     <p>objective {{project.objective}}</p>

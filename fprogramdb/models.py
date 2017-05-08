@@ -100,10 +100,15 @@ class Project(models.Model):
     programme = models.ManyToManyField(Programme)
     call = models.ForeignKey(Call)
     topic = models.ForeignKey(Topic, blank=True, null=True)
-    #partners = models.ForeignKey(PartnerProject)
 
     def __unicode__(self):
-        return u"{acronym}".format(acronym=self.acronym)
+        if self.acronym:
+            return u"{acronym}".format(acronym=self.acronym)
+        else:
+            if len(self.title) > 20:
+                return u"{title}[..]".format(title=self.title[:20])
+            else:
+                return u"{title}".format(title=self.title)
 
 
 class PartnerProject(models.Model):

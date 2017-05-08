@@ -15,7 +15,7 @@ def project_list_fp(request, fp):
         'title': 'List of projects within {fp}'.format(fp=fp),
         'projects': [
             {
-                'data': [_p.fp, _p.acronym, _p.startDate, _p.ecMaxContribution],
+                'data': [_p.fp, str(_p), _p.startDate, _p.ecMaxContribution],
                 'rcn': _p.rcn
             }
             for _p in projects],

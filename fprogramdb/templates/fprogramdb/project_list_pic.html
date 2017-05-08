@@ -1,7 +1,26 @@
 {% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
 
 {% block content %}
-    {{partner}}
+    <h1>
+        {% if partner.pic %}{% endif %}
+        {% if partner.shortName %}{{partner.shortName}}{% else %}{{partner.legalName}}{% endif %}
+        {% if partner.pic %}{% endif %}
+
+    </h1>
+    <div class="row"><div class="col-md-4">pic</div> <div class="col-md-6">{{partner.pic}}</div></div>
+    <div class="row"><div class="col-md-4">OrganizationActivityType</div> <div class="col-md-6">{{partner.get_organizationActivityType_display}}</div></div>
+    <div class="row"><div class="col-md-4">LegalName</div> <div class="col-md-6">{{partner.legalName}}</div>
+        {% if mergeable %}<div class="col-md-2"><a href="?similarity=legalName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>{% endif %}
+    </div>
+    <div class="row"><div class="col-md-4">ShortName</div> <div class="col-md-6">{{partner.shortName}}</div>
+        {% if mergeable %}<div class="col-md-2"><a href="?similarity=shortName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>{% endif %}
+    </div>
+    <div class="row"><div class="col-md-4">Street</div> <div class="col-md-6">{{partner.street}}</div>
+        {% if mergeable %}<div class="col-md-2"><a href="?similarity=street"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>{% endif %}
+    </div>
+    <div class="row"><div class="col-md-4">City</div> <div class="col-md-6">{{partner.city}}</div></div>
+    <div class="row"><div class="col-md-4">Country</div> <div class="col-md-6">{{partner.country}}</div></div>
+    <div class="row"><div class="col-md-4">PostalCode</div> <div class="col-md-6">{{partner.postalCode}}</div></div>
     <table class="table">
         <thead>
             <tr>
