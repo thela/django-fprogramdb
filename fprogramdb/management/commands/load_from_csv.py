@@ -15,6 +15,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.db import transaction
+from fprogramdb.merge_model import merge_model_objects
 
 from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, SourceFile
 
@@ -70,6 +71,7 @@ def get_filename_from_uri(uri):
 
 
 def download_file(uri, filename):
+    print('download', uri, filename)
     try:
         csv_urlfile = urllib2.urlopen(uri)
         with open(os.path.join(xml_dir, filename), 'wb') as csvfile:
@@ -310,41 +312,85 @@ class Command(BaseCommand):
         if pic != '':
             # most common case
             try:
-                # some orgs. appear without a pic, but we first search for occurrences in already in db
-                # in H2020 db no partner has a blank legalName, so we use that
-                partner_ob = Partner.objects.get(
-                    legalName=project_partner[fp_organization_headers['name']],
-                    pic='',
-                )
-                for key, value in {
-                    'pic': pic,
-                    'organizationActivityType': project_partner[fp_organization_headers['activityType']],
-                    # 'legalName': project_partner[fp_organization_headers['name']],
+                try:
+                    partner_ob_pic = Partner.objects.get(pic=pic, merged=False)
+                except Partner.DoesNotExist:
+                    partner_ob_pic = None
 
-                    'postalCode': project_partner[fp_organization_headers['postCode']],
-                    'city': project_partner[fp_organization_headers['city']],
-                    'street': project_partner[fp_organization_headers['street']],
-                    'country': project_partner[fp_organization_headers['country']]
-                }.items():
-                    setattr(partner_ob, key, value)
-                partner_ob.save()
-            except Partner.DoesNotExist:
-                partner_ob, created = Partner.objects.update_or_create(
-                    pic=pic,
-                    defaults={
+                # some orgs. appear without a pic, but we first search for occurrences in already in db.
+                # in H2020 db no partner has a blank legalName, so we use that
+                try:
+                    partner_ob = Partner.objects.get(
+                        legalName=project_partner[fp_organization_headers['name']],
+                        country=project_partner[fp_organization_headers['country']],
+                        pic='', merged=False,
+                    )
+                except Partner.MultipleObjectsReturned:
+                    print(pic, project_partner, Partner.objects.filter(
+                        legalName=project_partner[fp_organization_headers['name']],
+                        pic='', merged=False,
+                    ))
+                    raise Partner.MultipleObjectsReturned
+
+                if partner_ob_pic:
+                    merge_model_objects(partner_ob_pic, [partner_ob], keep_old=True)
+
+                    #print(alias_objects, [str(alias_object.id) for alias_object in alias_objects])
+                    if partner_ob_pic.merged_ids is None:
+                        partner_ob_pic.merged_ids = ''
+                    partner_ob_pic.merged_ids += ','.join(str(partner_ob.id))
+                    if partner_ob.merged_ids:
+                        if ',' in partner_ob.merged_ids:
+                            partner_ob_pic.merged_ids += ','.join(partner_ob.merged_ids.split(','))
+                        else:
+                            partner_ob_pic.merged_ids += '{pid},'.format(pid=partner_ob.merged_ids)
+
+                    partner_ob_pic.save()
+
+                    partner_ob.merged = True
+                    partner_ob.merged_with_id = partner_ob_pic.id
+                    partner_ob.save()
+
+                    partner_ob = partner_ob_pic
+                try:
+                    for key, value in {
+                        'pic': pic,
                         'organizationActivityType': project_partner[fp_organization_headers['activityType']],
-                        'legalName': project_partner[fp_organization_headers['name']],
-                        'shortName': str(project_partner[fp_organization_headers['shortName']]),
+                        # 'legalName': project_partner[fp_organization_headers['name']],
 
                         'postalCode': project_partner[fp_organization_headers['postCode']],
                         'city': project_partner[fp_organization_headers['city']],
                         'street': project_partner[fp_organization_headers['street']],
-                        'country': project_partner[fp_organization_headers['country']],
-                    }
-                )
+                        'country': project_partner[fp_organization_headers['country']]
+                    }.items():
+                        setattr(partner_ob, key, value)
+                    partner_ob.save()
+                except AttributeError:
+                    print(partner_ob, partner_ob_pic,pic, project_partner)
+
+            except Partner.DoesNotExist:
+                #try:
+                    partner_ob, created = Partner.objects.update_or_create(
+                        pic=pic,
+                        merged=False,
+                        defaults={
+                            'organizationActivityType': project_partner[fp_organization_headers['activityType']],
+                            'legalName': project_partner[fp_organization_headers['name']],
+                            'shortName': str(project_partner[fp_organization_headers['shortName']]),
+
+                            'postalCode': project_partner[fp_organization_headers['postCode']],
+                            'city': project_partner[fp_organization_headers['city']],
+                            'street': project_partner[fp_organization_headers['street']],
+                            'country': project_partner[fp_organization_headers['country']],
+                        }
+                    )
+                #except Partner.MultipleObjectsReturned:
+                #    print(pic)
+                #    print(Partner.objects.filter(pic=pic, merged=False))
+                #    print([p.pic for p in Partner.objects.filter(pic=pic, merged=False)])
         elif pic == '':
             try:
-                _query = Q()
+                _query = Q(merged=False)
                 if project_partner[fp_organization_headers['name']] != '':
                     _query |= Q(legalName=project_partner[fp_organization_headers['name']])
                 if project_partner[fp_organization_headers['shortName']] != '':
@@ -405,7 +451,7 @@ class Command(BaseCommand):
         created = False
         try:
             if pic != '':
-                partner_ob = Partner.objects.get(pic=pic)
+                partner_ob = Partner.objects.get(pic=pic, merged=False)
 
             else:
                 raise Partner.DoesNotExist
@@ -413,25 +459,25 @@ class Command(BaseCommand):
             try:
                 try:
                     partner_ob = Partner.objects.get(
-                        legalName=project_partner[fp_organization_headers['name']],
+                        legalName=project_partner[fp_organization_headers['name']], merged=False
                     )
                 except Partner.MultipleObjectsReturned:
                     # maybe same legalName but different country?
                     try:
                         partner_ob = Partner.objects.get(
-                            legalName=project_partner[fp_organization_headers['name']],
+                            legalName=project_partner[fp_organization_headers['name']], merged=False,
                             country=project_partner[fp_organization_headers['country']],
                         )
                     except Partner.MultipleObjectsReturned:
                         # still multiple? I take the first
                         print('\n', project_partner, Partner.objects.filter(
-                            legalName=project_partner[fp_organization_headers['name']],
+                            legalName=project_partner[fp_organization_headers['name']], merged=False,
                         ), Partner.objects.filter(
-                            legalName=project_partner[fp_organization_headers['name']],
+                            legalName=project_partner[fp_organization_headers['name']], merged=False,
                             country=project_partner[fp_organization_headers['country']],
                         ))
                         partner_ob = Partner.objects.filter(
-                            legalName=project_partner[fp_organization_headers['name']],
+                            legalName=project_partner[fp_organization_headers['name']], merged=False,
                             country=project_partner[fp_organization_headers['country']],
                         )[0]
             except Partner.DoesNotExist:
@@ -456,7 +502,7 @@ class Command(BaseCommand):
         # because headers change with the programme
         organizations_headers = {
             'H2020': {
-                'projectRcn': '\xef\xbb\xbfprojectRcn',
+                'projectRcn': 'projectRcn',
                 'projectID': 'projectID',
                 'projectAcronym': 'projectAcronym',
                 'role': 'role',
@@ -600,7 +646,6 @@ class Command(BaseCommand):
                     sourcefile.save()
 
                 if data != 'topics' or (data == 'topics' and fp == 'H2020'):
-
                     if (not os.path.exists(os.path.join(
                                 xml_dir,
                                 _filename)
@@ -622,9 +667,9 @@ class Command(BaseCommand):
 
     def read_fp(self, fp='H2020', cached=True):
         """
-        read all info related to a fp and stores it into the db
-        :param fp: framework string
-        :param cached: use files already downloaded
+            read all info related to a fp and stores it into the db
+            :param fp: framework string
+            :param cached: use files already downloaded
         """
         self.fp_data = {
             'organizations': [],
@@ -637,8 +682,8 @@ class Command(BaseCommand):
         with transaction.atomic():
             self.programmes_to_objects(fp)
 
-        with transaction.atomic():
-            if fp == 'H2020':
+        if fp == 'H2020':
+            with transaction.atomic():
                 self.topics_to_objects(fp)
         with transaction.atomic():
             self.projects_to_objects(fp)
@@ -658,7 +703,7 @@ class Command(BaseCommand):
         # TODO check euodp for updated datasets
         if 'fp' in options:
             if 'H2020' in options['fp']:
-                self.read_fp('H2020', cached=options['cached'])
+                self.read_fp('H2020', cached=options['cached'] != 'False')
                 options['fp'].remove('H2020')
             else:
                 print('You should load H2020 before other FP')

@@ -44,6 +44,8 @@ class Partner(models.Model):
     merged = models.BooleanField(default=False)
     merged_ids = models.CharField(max_length=200, validators=[validate_comma_separated_integer_list], blank=True,
                                   null=True)
+    merged_with_id = models.IntegerField(blank=True,
+                                         null=True)
 
     def __unicode__(self):
         if self.shortName:
