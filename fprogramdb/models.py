@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
 from django.core.validators import validate_comma_separated_integer_list
-from django.db import models
+from django.db import models, transaction
+from django.db.models.query import QuerySet
 
 FP_CODE = (
     (u'FP6', u'FP6'),
@@ -21,7 +22,7 @@ class SourceFile(models.Model):
 
 class Partner(models.Model):
     # TODO keep track of inherited deletions
-    
+
     # TODO warn for potential loss of external models
     CATEGORY_CODE = (
         (u'PRC', u'Private for-profit entities (excluding Higher or Secondary Education Establishments)'),
@@ -40,7 +41,6 @@ class Partner(models.Model):
     country = models.CharField(max_length=8, blank=True, null=True)
     postalCode = models.CharField(max_length=8, blank=True, null=True)
 
-    # not yet used, to monitor merging of organizations
     merged = models.BooleanField(default=False)
     merged_ids = models.CharField(max_length=200, validators=[validate_comma_separated_integer_list], blank=True,
                                   null=True)
@@ -52,6 +52,40 @@ class Partner(models.Model):
             return u"{shortName} - {id}".format(shortName=self.shortName, id=self.id)
         else:
             return u"{legalName}[...] - {id}".format(legalName=self.legalName[0:10], id=self.id)
+
+    def merge_with_models(self, alias_objects, keep_old=True):
+        """
+            "merges" to self the Partner objects stored in alias_objects as a list
+        :param alias_objects: list of Partner objects to be merged
+        :param keep_old: whether to delete the stale objects
+        :return: nothing
+        """
+
+        with transaction.atomic():
+            if not isinstance(alias_objects, list)\
+                    and not isinstance(alias_objects, QuerySet):
+                raise TypeError('the variable alias_objects needs to be a list object')
+
+            if self.merged_ids is None:
+                self.merged_ids = ''
+
+            self.merged_ids += ','.join(str([p_ob.id for p_ob in alias_objects]))
+            for p_ob in alias_objects:
+                if not isinstance(p_ob, type(self)):
+                    raise TypeError('one of the items of alias_objects ({ob}) is not a Partner object'.format(ob=p_ob))
+
+                if p_ob.merged_ids:
+                    if ',' in p_ob.merged_ids:
+                        self.merged_ids += ','.join(p_ob.merged_ids.split(','))
+                    self.merged_ids += '{pid},'.format(pid=p_ob.merged_ids)
+                if keep_old:
+                    p_ob.merged = True
+                    p_ob.merged_with_id = self.id
+                    p_ob.save()
+                else:
+                    p_ob.delete()
+
+            self.save()
 
 
 class Topic(models.Model):

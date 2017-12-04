@@ -172,8 +172,8 @@ class Command(BaseCommand):
                     }
                 )
                 _new += 1 if created else 0
-        print('{fp} - {new} programmes created'.format(
-            fp=fp, new=_new))
+        print('{fp} - {new} programmes created, {index} processed'.format(
+            fp=fp, new=_new, index=index+1))
 
     def topics_to_objects(self, fp='H2020'):
         _new = 0
@@ -194,8 +194,8 @@ class Command(BaseCommand):
                 }
             )
             _new += 1 if created else 0
-        print('{fp} - {new} topics created'.format(
-            fp=fp, new=_new))
+        print('{fp} - {new} topics created, {index} processed'.format(
+            fp=fp, new=_new, index=index+1))
 
     def projects_to_objects(self, fp='H2020'):
         _new = 0
@@ -282,8 +282,8 @@ class Command(BaseCommand):
                     _programme.save()
                     project_ob.programme.add(_programme)
                     project_ob.save()
-        print('{fp} - {new} projects created'.format(
-            fp=fp, new=_new))
+        print('{fp} - {new} projects created, {index} processed'.format(
+            fp=fp, new=_new, index=index+1))
 
     def organization_dict_to_object(self, pic, project_partner, fp_organization_headers):
         """
@@ -294,145 +294,98 @@ class Command(BaseCommand):
         consistent within multiple runs
                 
         the algorithm roughly is:
-            if pic is not null: 
-                checks whether there already is a Partner with the same legalName but without pic:
-                    if present, modifies that entry with the present data
-                    otherwise, update_or_creates an entry with that pic
+            if pic is not null:
+                checks if there is already a Partner with the given pic
             if pic is null:
                 checks whether there already is a Partner with the same (shortName or legalName) and country:
                     if present, returns that entry
-                    otherwise, creates a new entry with data present, and pic as empty string
-         
+            otherwise it creates a new partner with the given pic (if-present)
+
+            if the found partner was merged with another, returns the latter
+
+            checks whether there already is a Partner with the same legalName but without pic:
+                if present, modifies that entry with the present data
+            then all data is updated with the new info
+
         :param pic: project pic
         :param project_partner: dictionary with data from a CORDIS row
         :param fp_organization_headers: header of the CORDIS file
         :return: partner object, bool True if newly created (just for stat)
         """
         created = False
-        if pic != '':
-            # most common case
-            try:
-                try:
-                    partner_ob_pic = Partner.objects.get(pic=pic, merged=False)
-                except Partner.DoesNotExist:
-                    partner_ob_pic = None
-
-                # some orgs. appear without a pic, but we first search for occurrences in already in db.
-                # in H2020 db no partner has a blank legalName, so we use that
-                try:
-                    partner_ob = Partner.objects.get(
-                        legalName=project_partner[fp_organization_headers['name']],
-                        country=project_partner[fp_organization_headers['country']],
-                        pic='', merged=False,
-                    )
-                except Partner.MultipleObjectsReturned:
-                    print(pic, project_partner, Partner.objects.filter(
-                        legalName=project_partner[fp_organization_headers['name']],
-                        pic='', merged=False,
-                    ))
-                    raise Partner.MultipleObjectsReturned
-
-                if partner_ob_pic:
-                    merge_model_objects(partner_ob_pic, [partner_ob], keep_old=True)
-
-                    #print(alias_objects, [str(alias_object.id) for alias_object in alias_objects])
-                    if partner_ob_pic.merged_ids is None:
-                        partner_ob_pic.merged_ids = ''
-                    partner_ob_pic.merged_ids += ','.join(str(partner_ob.id))
-                    if partner_ob.merged_ids:
-                        if ',' in partner_ob.merged_ids:
-                            partner_ob_pic.merged_ids += ','.join(partner_ob.merged_ids.split(','))
-                        else:
-                            partner_ob_pic.merged_ids += '{pid},'.format(pid=partner_ob.merged_ids)
-
-                    partner_ob_pic.save()
-
-                    partner_ob.merged = True
-                    partner_ob.merged_with_id = partner_ob_pic.id
-                    partner_ob.save()
-
-                    partner_ob = partner_ob_pic
-                try:
-                    for key, value in {
-                        'pic': pic,
-                        'organizationActivityType': project_partner[fp_organization_headers['activityType']],
-                        # 'legalName': project_partner[fp_organization_headers['name']],
-
-                        'postalCode': project_partner[fp_organization_headers['postCode']],
-                        'city': project_partner[fp_organization_headers['city']],
-                        'street': project_partner[fp_organization_headers['street']],
-                        'country': project_partner[fp_organization_headers['country']]
-                    }.items():
-                        setattr(partner_ob, key, value)
-                    partner_ob.save()
-                except AttributeError:
-                    print(partner_ob, partner_ob_pic,pic, project_partner)
-
-            except Partner.DoesNotExist:
-                #try:
-                    partner_ob, created = Partner.objects.update_or_create(
-                        pic=pic,
-                        merged=False,
-                        defaults={
-                            'organizationActivityType': project_partner[fp_organization_headers['activityType']],
-                            'legalName': project_partner[fp_organization_headers['name']],
-                            'shortName': str(project_partner[fp_organization_headers['shortName']]),
-
-                            'postalCode': project_partner[fp_organization_headers['postCode']],
-                            'city': project_partner[fp_organization_headers['city']],
-                            'street': project_partner[fp_organization_headers['street']],
-                            'country': project_partner[fp_organization_headers['country']],
-                        }
-                    )
-                #except Partner.MultipleObjectsReturned:
-                #    print(pic)
-                #    print(Partner.objects.filter(pic=pic, merged=False))
-                #    print([p.pic for p in Partner.objects.filter(pic=pic, merged=False)])
-        elif pic == '':
-            try:
-                _query = Q(merged=False)
-                if project_partner[fp_organization_headers['name']] != '':
-                    _query |= Q(legalName=project_partner[fp_organization_headers['name']])
-                if project_partner[fp_organization_headers['shortName']] != '':
-                    _query |= Q(shortName=project_partner[fp_organization_headers['shortName']])
-                if project_partner[fp_organization_headers['country']] != '':
-                    _query &= Q(country=project_partner[fp_organization_headers['country']])
-
-                print('\n', project_partner, _query, Partner.objects.filter(
-                    _query
-                ))
-
+        try:
+            if pic != '':
+                '''
+                this is a "rewrite" of an update_or_create with the merged check embedded into it
+                partner_ob, created = Partner.objects.update_or_create(
+                    pic=pic,
+                    merged=False,
+                    defaults={...}
+                )'''
                 partner_ob = Partner.objects.get(
-                    _query
+                    pic=pic
                 )
-            except Partner.DoesNotExist:
-                created = True
-                partner_ob = Partner()
-                for key, value in {
-                    'organizationActivityType': project_partner[fp_organization_headers['activityType']],
-                    'legalName': project_partner[fp_organization_headers['name']],
-                    'shortName': project_partner[fp_organization_headers['shortName']],
 
-                    'postalCode': project_partner[fp_organization_headers['postCode']],
-                    'city': project_partner[fp_organization_headers['city']],
-                    'street': project_partner[fp_organization_headers['street']],
-                    'country': project_partner[fp_organization_headers['country']],
-                }.items():
-                    setattr(partner_ob, key, value)
-                partner_ob.save()
+            elif pic == '':
+                    _query = Q()
+                    if project_partner[fp_organization_headers['name']] != '':
+                        _query |= Q(legalName=project_partner[fp_organization_headers['name']])
+                    if project_partner[fp_organization_headers['shortName']] != '':
+                        _query |= Q(shortName=project_partner[fp_organization_headers['shortName']])
+                    if project_partner[fp_organization_headers['country']] != '':
+                        _query &= Q(country=project_partner[fp_organization_headers['country']])
+
+                    print('\n', project_partner, _query, Partner.objects.filter(
+                        _query
+                    ))
+
+                    partner_ob = Partner.objects.get(
+                        _query
+                    )
+        except Partner.DoesNotExist:
+            created = True
+            partner_ob = Partner()
+            if pic != '':
+                partner_ob.pic = pic
+
+        # if the returned partner_ob was merged, get the latter
+        if partner_ob.merged:
+            partner_ob = Partner.objects.get(
+                id=partner_ob.merged_with_id
+            )
+
+        for key, value in {
+            'organizationActivityType': project_partner[fp_organization_headers['activityType']],
+            'legalName': project_partner[fp_organization_headers['name']],
+            'shortName': project_partner[fp_organization_headers['shortName']],
+
+            'postalCode': project_partner[fp_organization_headers['postCode']],
+            'city': project_partner[fp_organization_headers['city']],
+            'street': project_partner[fp_organization_headers['street']],
+            'country': project_partner[fp_organization_headers['country']],
+        }.items():
+            setattr(partner_ob, key, value)
+        partner_ob.save()
+
+        # merge existing analogue partner objects without pic with this
+        partner_ob.merge_with_models(Partner.objects.filter(
+                legalName=project_partner[fp_organization_headers['name']],
+                country=project_partner[fp_organization_headers['country']],
+                pic='', merged=False,
+            ))
 
         return partner_ob, created
 
     def organization_dict_to_object_beforeh2020(self, pic, project_partner, fp_organization_headers):
         """
         translation of a row of CORDIS organizations file into an object of the db for fps before H2020.
-        We try to ensure consistence with current H2020 data, and before H2020 organizations db is very messy. 
+        We try to ensure consistence with current H2020 data, and before H2020 organizations db is very messy.
         When we can, we use the legalName to link to H2020 organizations.
-                
+
         the algorithm roughly is:
             if pic not empty and Partner already in db:
                 return that Partner
-                
+
             elif there already is a Partner with the same legalName
                 if there is only one Partner with the same legalName
                     return that
@@ -442,10 +395,10 @@ class Command(BaseCommand):
                     return the first occurrence
             otherwise
                 create new
-         
-        :param pic: 
-        :param project_partner: 
-        :param fp_organization_headers: 
+
+        :param pic:
+        :param project_partner:
+        :param fp_organization_headers:
         :return: partner object, bool True if newly created (just for stat)
         """
         created = False
@@ -459,27 +412,32 @@ class Command(BaseCommand):
             try:
                 try:
                     partner_ob = Partner.objects.get(
-                        legalName=project_partner[fp_organization_headers['name']], merged=False
+                        legalName=project_partner[fp_organization_headers['name']]
                     )
                 except Partner.MultipleObjectsReturned:
                     # maybe same legalName but different country?
                     try:
                         partner_ob = Partner.objects.get(
-                            legalName=project_partner[fp_organization_headers['name']], merged=False,
+                            legalName=project_partner[fp_organization_headers['name']],
                             country=project_partner[fp_organization_headers['country']],
                         )
                     except Partner.MultipleObjectsReturned:
                         # still multiple? I take the first
                         print('\n', project_partner, Partner.objects.filter(
-                            legalName=project_partner[fp_organization_headers['name']], merged=False,
+                            legalName=project_partner[fp_organization_headers['name']],
                         ), Partner.objects.filter(
-                            legalName=project_partner[fp_organization_headers['name']], merged=False,
+                            legalName=project_partner[fp_organization_headers['name']],
                             country=project_partner[fp_organization_headers['country']],
                         ))
                         partner_ob = Partner.objects.filter(
-                            legalName=project_partner[fp_organization_headers['name']], merged=False,
+                            legalName=project_partner[fp_organization_headers['name']],
                             country=project_partner[fp_organization_headers['country']],
                         )[0]
+                # if the returned partner_ob was merged, get the latter
+                if partner_ob.merged:
+                    partner_ob = Partner.objects.get(
+                        id=partner_ob.merged_with_id
+                    )
             except Partner.DoesNotExist:
                 created = True
                 partner_ob = Partner()
@@ -527,7 +485,7 @@ class Command(BaseCommand):
                 'contactEmail': 'contactEmail',
             },
             'FP7': {
-                'projectRcn': 'projectRcn',
+                'projectRcn': '\xef\xbb\xbfprojectRcn',
                 'projectID': 'projectReference',
                 'projectAcronym': 'projectAcronym',
                 'role': 'role',
@@ -614,8 +572,8 @@ class Command(BaseCommand):
                 }
             )
             _new += 1 if created else 0
-        print('{fp} - {new} organizations created'.format(
-            fp=fp, new=_new))
+        print('{fp} - {new} organizations created, {index} processed'.format(
+            fp=fp, new=_new, index=index+1))
 
     def read_csv_lists(self, fp='H2020', use_cached=True, update_only=False):
         """
@@ -646,14 +604,18 @@ class Command(BaseCommand):
                     sourcefile.save()
 
                 if data != 'topics' or (data == 'topics' and fp == 'H2020'):
+
+                    # choose when to download again the csv file
                     if (not os.path.exists(os.path.join(
                                 xml_dir,
                                 _filename)
-                            ) or
-                            not use_cached
-                        or (update_only and update_date > sourcefile.update_date)
+                            )  # no cache to use
+                        or not use_cached  # don't use cache
+                        or (update_only  # just download updated
+                            and (not sourcefile.update_date or
+                                         update_date.date() > sourcefile.update_date
+                                 ))
                     ):
-
                         download_file(sourceurls[fp][data][0], _filename)
 
                         sourcefile.update_date = update_date if update_date else check_updates(
@@ -665,9 +627,10 @@ class Command(BaseCommand):
                     with open(os.path.join(xml_dir, _filename), 'rb') as csvfile:
                         self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
 
-    def read_fp(self, fp='H2020', cached=True):
+    def read_fp(self, fp='H2020', cached=True, update_only=False):
         """
             read all info related to a fp and stores it into the db
+            :param update_only:
             :param fp: framework string
             :param cached: use files already downloaded
         """
@@ -678,17 +641,19 @@ class Command(BaseCommand):
             'topics': [],
         }
 
-        self.read_csv_lists(fp, cached)
-        with transaction.atomic():
-            self.programmes_to_objects(fp)
+        self.read_csv_lists(fp, cached, update_only)
 
-        if fp == 'H2020':
+        if not update_only:
             with transaction.atomic():
-                self.topics_to_objects(fp)
-        with transaction.atomic():
-            self.projects_to_objects(fp)
-        with transaction.atomic():
-            self.organizations_to_objects(fp)
+                self.programmes_to_objects(fp)
+
+            if fp == 'H2020':
+                with transaction.atomic():
+                    self.topics_to_objects(fp)
+            with transaction.atomic():
+                self.projects_to_objects(fp)
+            with transaction.atomic():
+                self.organizations_to_objects(fp)
 
     def add_arguments(self, parser):
         # Positional arguments
@@ -696,17 +661,19 @@ class Command(BaseCommand):
             "-fp", "--frameworkprogrammes", dest="fp", choices=[fp for fp in sourceurls],
             nargs='*', help="FPS to be processed", default=['H2020'])
         parser.add_argument(
+            "--checkupdates", dest="update_only",
+            help="only check updates on the db", default="False")
+        parser.add_argument(
             "--cached", dest="cached",
             help="FPS to be processed", default="True")
 
     def handle(self, *args, **options):
-        # TODO check euodp for updated datasets
         if 'fp' in options:
             if 'H2020' in options['fp']:
-                self.read_fp('H2020', cached=options['cached'] != 'False')
+                self.read_fp('H2020', cached=options['cached'] != 'False', update_only=options['cached'] != 'True')
                 options['fp'].remove('H2020')
             else:
                 print('You should load H2020 before other FP')
 
             for fp in options['fp']:
-                self.read_fp(fp, cached=options['cached'])
+                self.read_fp(fp, cached=options['cached'] != 'False', update_only=options['update_only'] == 'True')
