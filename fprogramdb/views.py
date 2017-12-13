@@ -45,12 +45,15 @@ class ProjectListPIC(View):
         return difflib.SequenceMatcher(a=seq1.lower(), b=seq2.lower()).ratio()
 
     @method_decorator(login_required)
-    def post(self, request, pic):
+    def post(self, request, pic=None, partner_id=None):
         _context = {'partner_form': {}}
         formset = None
         partners_id = []
 
-        partner = Partner.objects.get(pic=pic)
+        if pic:
+            partner = Partner.objects.get(pic=pic)
+        elif partner_id:
+            partner = Partner.objects.get(id=partner_id)
 
         partnerformset = formset_factory(PartnerSelect, extra=0)
         partneridset = formset_factory(PartnerId, extra=0)

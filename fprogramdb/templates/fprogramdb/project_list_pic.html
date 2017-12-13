@@ -101,13 +101,13 @@
                 {% for form in merge_view_formset %}
                     <tr><td>{{form.selected}}</td>
                         <td>
-                            <a href="{% if form.pic.value %}{% url 'fprogramdb_upd:partner_detail' pic=form.pic.value %}
+                            <a href="{% if form.pic.value %}{% url 'fprogramdb:project_list_pic' pic=form.pic.value %}
                                 {% else %}{% url 'fprogramdb:project_list_id' partner_id=form.partner_id.value %}{% endif %}">
                                 {{form.shortName.value}}
                             </a>
                         </td>
                         <td>
-                            <a href="{% if form.pic.value %}{% url 'fprogramdb_upd:partner_detail' pic=form.pic.value %}
+                            <a href="{% if form.pic.value %}{% url 'fprogramdb:project_list_pic' pic=form.pic.value %}
                                 {% else %}{% url 'fprogramdb:project_list_id' partner_id=form.partner_id.value %}{% endif %}">
                                 {{form.legalName.value}}
                             </a>
