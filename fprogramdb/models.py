@@ -5,25 +5,38 @@ from django.db import models, transaction
 from django.db.models.query import QuerySet
 
 FP_CODE = (
+    (u'FP1', u'FP1'),
+    (u'FP2', u'FP2'),
+    (u'FP3', u'FP3'),
+    (u'FP4', u'FP4'),
+    (u'FP5', u'FP5'),
     (u'FP6', u'FP6'),
     (u'FP7', u'FP7'),
     (u'H2020', u'H2020'),
 )
 
 
-class SourceFile(models.Model):
+class EuodpData(models.Model):
     euodp_url = models.URLField()
     file_url = models.URLField()
     update_date = models.DateField(blank=True, null=True)
 
     def __unicode__(self):
-        return self.euodp_url
+        return self.file_url
 
+
+class FpData(models.Model):
+    fp = models.CharField(max_length=5, choices=FP_CODE, default='H2020')
+
+    organizations = models.ForeignKey(EuodpData, related_name='organizations', null=True)
+    projects = models.ForeignKey(EuodpData, related_name='projects', null=True)
+    programmes = models.ForeignKey(EuodpData, related_name='programmes', null=True)
+    topics = models.ForeignKey(EuodpData, related_name='topics', null=True)
+
+    def __unicode__(self):
+        return self.fp
 
 class Partner(models.Model):
-    # TODO keep track of inherited deletions
-
-    # TODO warn for potential loss of external models
     CATEGORY_CODE = (
         (u'PRC', u'Private for-profit entities (excluding Higher or Secondary Education Establishments)'),
         (u'HES', u'Higher or Secondary Education Establishments'),

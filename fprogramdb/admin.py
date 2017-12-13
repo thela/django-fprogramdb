@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 # Register your models here.
-from fprogramdb.models import Project, Call, Topic, Partner, PartnerProject, Programme, SourceFile
+from fprogramdb.models import Project, Call, Topic, Partner, PartnerProject, Programme, EuodpData, FpData
 
 
 class ProjectAdmin(admin.ModelAdmin):
@@ -12,7 +12,8 @@ class PartnerAdmin(admin.ModelAdmin):
     search_fields = ['legalName', 'shortName', 'pic']
 
 
-admin.site.register(SourceFile)
+admin.site.register(EuodpData)
+admin.site.register(FpData)
 admin.site.register(Project, ProjectAdmin)
 admin.site.register(Call)
 admin.site.register(Programme)

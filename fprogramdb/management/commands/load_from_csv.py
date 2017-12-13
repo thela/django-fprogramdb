@@ -16,7 +16,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.db import transaction
 
-from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, SourceFile
+from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, EuodpData, FpData
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -40,8 +40,7 @@ sourceurls = {
                      "http://data.europa.eu/euodp/en/data/dataset/cordisfp7projects.rdf"],
         'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP7programmes.csv',
                        "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
-        'topics': ['http://cordis.europa.eu/data/reference/cordisref-FP7topics.csv',
-                   "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+        'topics': [None, None],
     },
     'FP6': {
         'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP6programmes.csv',
@@ -51,8 +50,7 @@ sourceurls = {
         'projects': [
             "http://cordis.europa.eu/data/cordis-fp6projects.csv",
             "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
-        'topics': ['',
-                   ""],
+        'topics': [None, None],
     },
 }
 
@@ -80,7 +78,11 @@ def download_file(uri, filename):
         print('{file} not found'.format(file=filename))
 
 
-def check_updates(rdf_url, file_uri_to_check=''):
+def check_updates(euodp_data=None, rdf_url=None, file_uri_to_check=None):
+    if euodp_data:
+        rdf_url = euodp_data.euodp_url
+        file_uri_to_check = euodp_data.file_url
+
     import rdflib
     from rdflib.namespace import DCTERMS
 
@@ -576,57 +578,56 @@ class Command(BaseCommand):
         print('{fp} - {new} organizations created, {index} processed'.format(
             fp=fp, new=_new, index=index+1))
 
-    def read_csv_lists(self, fp='H2020', use_cached=True, update_only=False):
+    def read_csv_lists(self, fp, use_cached=True, update_only=False):
         """
         read/download files related to fp and stores the results in lists
         :param fp: framework string
         :param use_cached: if to use files already downloaded
         :param update_only: downloads resource if updated online
         """
-        for data in ['organizations', 'projects', 'programmes', 'topics']:
-            _filename = get_filename_from_uri(sourceurls[fp][data][0])
-            if _filename:
-                update_date = ''
-                if update_only:
-                    update_date = check_updates(
-                        rdf_url=sourceurls[fp][data][1],
-                        file_uri_to_check=sourceurls[fp][data][0]
-                    )
 
-                try:
-                    sourcefile = SourceFile.objects.get(
-                        file_url=sourceurls[fp][data][0]
-                    )
-                except SourceFile.DoesNotExist:
-                    sourcefile = SourceFile()
+        fp_data_ob, fp_created = FpData.objects.get_or_create(fp=fp)
+        if fp_created:
+            for data in ['organizations', 'projects', 'programmes', 'topics']:
+                if sourceurls[fp][data][1]:
+                    sourcefile = EuodpData()
 
                     sourcefile.euodp_url = sourceurls[fp][data][1]
                     sourcefile.file_url = sourceurls[fp][data][0]
                     sourcefile.save()
 
-                if data != 'topics' or (data == 'topics' and fp == 'H2020'):
+                    # sets the correct EuodpData object in FpData
+                    setattr(fp_data_ob, data, sourcefile)
+            fp_data_ob.save()
 
-                    # choose when to download again the csv file
-                    if (not os.path.exists(os.path.join(
-                                xml_dir,
-                                _filename)
-                            )  # no cache to use
-                        or not use_cached  # don't use cache
-                        or (update_only  # just download updated
-                            and (not sourcefile.update_date or
-                                         update_date.date() > sourcefile.update_date
-                                 ))
-                    ):
-                        download_file(sourceurls[fp][data][0], _filename)
+        for data in ['organizations', 'projects', 'programmes', 'topics']:
+            euodp_data = getattr(fp_data_ob, data)
+            if euodp_data:
+                _filename = get_filename_from_uri(euodp_data.file_url)
+                update_date = ''
+                if not use_cached or update_only:
+                    update_date = check_updates(euodp_data)
 
-                        sourcefile.update_date = update_date if update_date else check_updates(
-                            rdf_url=sourceurls[fp][data][1],
-                            file_uri_to_check=sourceurls[fp][data][0]
-                        )
-                        sourcefile.save()
+                # choose when to download again the csv file
+                if (not os.path.exists(os.path.join(
+                            xml_dir,
+                            _filename)
+                        )  # no cache to use
+                    or not use_cached  # don't use cache
+                    or (update_only  # just download updated
+                        and (not euodp_data.update_date or
+                                     update_date.date() > euodp_data.update_date
+                             ))
+                ):
+                    download_file(sourceurls[fp][data][0], _filename)
+                    euodp_data.update_date = update_date if update_date else check_updates(
+                        rdf_url=euodp_data.euodp_url,
+                        file_uri_to_check=euodp_data.file_url
+                    )
+                    euodp_data.save()
 
-                    with open(os.path.join(xml_dir, _filename), 'rb') as csvfile:
-                        self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
+                with open(os.path.join(xml_dir, _filename), 'rb') as csvfile:
+                    self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
 
     def read_fp(self, fp='H2020', cached=True, update_only=False):
         """
@@ -671,7 +672,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if 'fp' in options:
             if 'H2020' in options['fp']:
-                self.read_fp('H2020', cached=options['cached'] != 'False', update_only=options['cached'] != 'True')
+                self.read_fp('H2020', cached=options['cached'] != 'False', update_only=options['update_only'] == 'True')
                 options['fp'].remove('H2020')
             else:
                 print('You should load H2020 before other FP')
