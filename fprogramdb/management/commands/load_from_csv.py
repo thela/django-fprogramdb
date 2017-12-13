@@ -15,7 +15,6 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.db import transaction
-from fprogramdb.merge_model import merge_model_objects
 
 from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, SourceFile
 
@@ -367,12 +366,14 @@ class Command(BaseCommand):
             setattr(partner_ob, key, value)
         partner_ob.save()
 
-        # merge existing analogue partner objects without pic with this
-        partner_ob.merge_with_models(Partner.objects.filter(
-                legalName=project_partner[fp_organization_headers['name']],
-                country=project_partner[fp_organization_headers['country']],
-                pic='', merged=False,
-            ))
+        # merge existing analogous partner objects without pic with this
+        analogous = Partner.objects.filter(
+            legalName=project_partner[fp_organization_headers['name']],
+            country=project_partner[fp_organization_headers['country']],
+            pic='', merged=False,
+        )
+        if analogous:
+            partner_ob.merge_with_models(analogous)
 
         return partner_ob, created
 

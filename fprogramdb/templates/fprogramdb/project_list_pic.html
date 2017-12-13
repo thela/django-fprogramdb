@@ -1,4 +1,5 @@
 {% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
+{% load i18n %}
 
 {% block content %}
     <h1>
@@ -10,30 +11,147 @@
     <div class="row"><div class="col-md-4">pic</div> <div class="col-md-6">{{partner.pic}}</div></div>
     <div class="row"><div class="col-md-4">OrganizationActivityType</div> <div class="col-md-6">{{partner.get_organizationActivityType_display}}</div></div>
     <div class="row"><div class="col-md-4">LegalName</div> <div class="col-md-6">{{partner.legalName}}</div>
-        {% if mergeable %}<div class="col-md-2"><a href="?similarity=legalName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>{% endif %}
+        <div class="col-md-2"><a class="collapse-similarities collapse" href="?similarity=legalName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a>
+        </div>
     </div>
     <div class="row"><div class="col-md-4">ShortName</div> <div class="col-md-6">{{partner.shortName}}</div>
-        {% if mergeable %}<div class="col-md-2"><a href="?similarity=shortName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>{% endif %}
+        <div class="col-md-2"><a class="collapse-similarities collapse" href="?similarity=shortName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>
     </div>
     <div class="row"><div class="col-md-4">Street</div> <div class="col-md-6">{{partner.street}}</div>
-        {% if mergeable %}<div class="col-md-2"><a href="?similarity=street"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>{% endif %}
+        <div class="col-md-2"><a class="collapse-similarities collapse" href="?similarity=street" aria-expanded="false"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>
     </div>
     <div class="row"><div class="col-md-4">City</div> <div class="col-md-6">{{partner.city}}</div></div>
     <div class="row"><div class="col-md-4">Country</div> <div class="col-md-6">{{partner.country}}</div></div>
     <div class="row"><div class="col-md-4">PostalCode</div> <div class="col-md-6">{{partner.postalCode}}</div></div>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>fp</th><th>acronym</th><th>startDate</th><th>endDate</th><th>ecContribution</th><th>coordinator?</th>
-            </tr>
-        </thead>
+    <script>
+        window.addEventListener('load', function() {
+            $('.collapse-similarities').each(function(){$(this).collapse('hide')})
+            $(".similarities-button").on("click", function() {
+                $('.collapse-similarities').collapse('toggle');
+            });
+        })
+    </script>
+    <div class="row"><div class="col-md-4">
+        <button class="btn btn-primary similarities-button" data-toggle="collapse" type="button">Search for Similarities</button>
+    </div>
+        <div class="col-md-6 collapse-similarities collapse" ><form method="post" action=""><input type="submit" name="Search" value="Search"/>{% csrf_token %}{{partner_search_form.search_field}}</form></div></div>
 
-        <tbody>{% for project_row in projects %}
-            <tr>
-                {% for item in project_row.data %}
-                    <td><a href="{% url 'fprogramdb:project_data_rcn' rcn=project_row.rcn %}">{{item}}</a></td>
+    {% if partner.merged %}
+        <div class="row"><div class="col-md-4">Merged with</div> <div class="col-md-6">
+            <a href="{% url 'fprogramdb:project_list_id' partner_id=partner.merged_with_id %}">partner.merged_with_id</a>
+        </div></div>
+    {% elif merged_ids %}
+        <div class="row">
+            <div class="col-md-4">
+                <a class="btn btn-primary" role="button" data-toggle="collapse" href="#collapseMerged" aria-expanded="false" aria-controls="collapseMerged">
+                  Merged Partners
+                </a>
+            </div>
+            <div class="col-md-6">
+                <div class="collapse" id="collapseMerged">
+                    <div class="well">
+                        <ul>{% for m_partner in merged_ids %}
+                            <li><a href="{% url 'fprogramdb:project_list_id' partner_id=m_partner.id %}">{{m_partner}}</a></li>
+                        {% endfor %}</ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    {% if partner_form and partner_form.merging_partner_formdata %}
+        <ul>
+            <form method="post" action=""> {% csrf_token %}{{ partner_form.selected_formset.management_form }}
+                {% for form in partner_form.selected_formset %}
+                    {{form.partner_id.as_hidden}}
                 {% endfor %}
-            </tr>
-        {% endfor %}</tbody>
-    </table>
+                <input type="submit" name="Merge" value="Merge"/>
+            </form>
+            {% for partner in partner_form.merging_partner_formdata %}
+               <li>{% if partner.0.pic %}
+                    partner_detail{{partner.0}}</a>
+               {% else %}
+                    <a href="{% url 'fprogramdb:project_list_id' partner_id=partner.0.id %}">{{partner.0}}</a>
+               {% endif %}
+                    {% if partner.1 != '' %}
+                        {% for field in partner.3 %}
+                            <p>{{field.label}}: {{field.value}}</p>
+                        {% endfor %}
+                        Objects linked to this Partner:
+                        {% for model_name, object_count in partner.2 %}
+                            {{ model_name|capfirst }}: {{ object_count }},
+                        {% endfor %}
+
+                    {% endif %}
+                </li>
+            {% endfor %}
+            <form method="post" action=""> {% csrf_token %}{{ partner_form.selected_formset.management_form }}
+                {% for form in partner_form.selected_formset %}
+                    {{form.partner_id.as_hidden}}
+                {% endfor %}
+                <input type="submit" name="Merge" value="Merge"/>
+            </form>
+        </ul>
+    {% endif %}
+    {% if merge_view_formset %}
+        <form method="post" action=""> {% csrf_token %}
+            {{ merge_view_formset.management_form }}
+            {% trans "View Partners to be merged" as to_be_merged %}
+            <input type="submit" name="MergeView" value='{{to_be_merged}}'/>
+            <table class="table"><tbody>
+                {% for form in merge_view_formset %}
+                    <tr><td>{{form.selected}}</td>
+                        <td>
+                            <a href="{% if form.pic.value %}{% url 'fprogramdb_upd:partner_detail' pic=form.pic.value %}
+                                {% else %}{% url 'fprogramdb:project_list_id' partner_id=form.partner_id.value %}{% endif %}">
+                                {{form.shortName.value}}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% if form.pic.value %}{% url 'fprogramdb_upd:partner_detail' pic=form.pic.value %}
+                                {% else %}{% url 'fprogramdb:project_list_id' partner_id=form.partner_id.value %}{% endif %}">
+                                {{form.legalName.value}}
+                            </a>
+                            {{form.shortName.as_hidden}}{{form.partner_id.as_hidden}}{{form.pic.as_hidden}}{{form.shortName.as_hidden}}{{form.legalName.as_hidden}}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody></table>
+            <input type="submit" name="MergeView" value='{{to_be_merged}}'/>
+        </form>
+    {% endif %}
+    {% if projects %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>fp</th><th>acronym</th><th>startDate</th><th>endDate</th><th>ecContribution</th><th>coordinator?</th>
+                </tr>
+            </thead>
+
+            <tbody>{% for project_row in projects %}
+                <tr>
+                    {% for item in project_row.data %}
+                        <td><a href="{% url 'fprogramdb:project_data_rcn' rcn=project_row.rcn %}">{{item}}</a></td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+    {% endif %}
+    {% if initial_projects %}
+        Projects initially linked to this Partner
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>fp</th><th>acronym</th><th>startDate</th><th>endDate</th><th>ecContribution</th><th>coordinator?</th>
+                </tr>
+            </thead>
+
+            <tbody>{% for project_row in initial_projects %}
+                <tr>
+                    {% for item in project_row.data %}
+                        <td><a href="{% url 'fprogramdb:project_data_rcn' rcn=project_row.rcn %}">{{item}}</a></td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}</tbody>
+        </table>
+    {% endif %}
 {% endblock %}

@@ -60,32 +60,51 @@ class Partner(models.Model):
         :param keep_old: whether to delete the stale objects
         :return: nothing
         """
+        if alias_objects:
+            with transaction.atomic():
+                if not isinstance(alias_objects, list)\
+                        and not isinstance(alias_objects, QuerySet):
+                    raise TypeError('the variable alias_objects needs to be a list object')
 
-        with transaction.atomic():
-            if not isinstance(alias_objects, list)\
-                    and not isinstance(alias_objects, QuerySet):
-                raise TypeError('the variable alias_objects needs to be a list object')
-
-            if self.merged_ids is None:
-                self.merged_ids = ''
-
-            self.merged_ids += ','.join(str([p_ob.id for p_ob in alias_objects]))
-            for p_ob in alias_objects:
-                if not isinstance(p_ob, type(self)):
-                    raise TypeError('one of the items of alias_objects ({ob}) is not a Partner object'.format(ob=p_ob))
-
-                if p_ob.merged_ids:
-                    if ',' in p_ob.merged_ids:
-                        self.merged_ids += ','.join(p_ob.merged_ids.split(','))
-                    self.merged_ids += '{pid},'.format(pid=p_ob.merged_ids)
-                if keep_old:
-                    p_ob.merged = True
-                    p_ob.merged_with_id = self.id
-                    p_ob.save()
+                if self.merged_ids is None:
+                    _merged_ids = ''
                 else:
-                    p_ob.delete()
+                    _merged_ids = self.merged_ids + ','
 
-            self.save()
+                _merged_ids += ','.join([str(p_ob.id) for p_ob in alias_objects])
+
+                for p_ob in alias_objects:
+                    if not isinstance(p_ob, type(self)):
+                        raise TypeError('one of the items of alias_objects ({ob}) is not a Partner object'.format(ob=p_ob))
+
+                    if p_ob.merged_ids:
+                        if ',' in p_ob.merged_ids:
+                            _merged_ids += ','.join(p_ob.merged_ids.split(','))
+                        _merged_ids += ',{pid}'.format(pid=p_ob.merged_ids)
+
+                    if keep_old:
+                        p_ob.merged = True
+                        p_ob.merged_with_id = self.id
+                        p_ob.save()
+
+                        # sets the partner in project as self, noting the original
+                        for pproject in PartnerProject.objects.filter(partner=p_ob):
+                            pproject.partner = self
+                            pproject.original_partner = p_ob
+                            pproject.save()
+
+                    else:
+                        p_ob.delete()
+
+                        # sets the partner in project as self
+                        for pproject in PartnerProject.objects.filter(partner=p_ob):
+                            pproject.partner = self
+                            pproject.save()
+                # it updates merged_ids only if the transaction was correctly carried out
+
+                self.merged_ids = _merged_ids
+
+                self.save()
 
 
 class Topic(models.Model):
@@ -154,6 +173,8 @@ class PartnerProject(models.Model):
 
     partner = models.ForeignKey(Partner)
     project = models.ForeignKey(Project)
+
+    original_partner = models.ForeignKey(Partner, related_name='original_partner', null=True)
 
     def __unicode__(self):
         return u"{project} - {partner}".format(
