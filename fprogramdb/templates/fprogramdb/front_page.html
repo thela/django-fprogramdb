@@ -1,0 +1,18 @@
+{% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
+
+{% block content %}
+    <table class="table">
+         <thead>
+            <tr>
+                <th>fp</th><th># Projects</th><th># Partners in Projects</th><th>ecContribution</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fp in fp_data %}
+                <tr>
+                    <td><a href="{% url 'fprogramdb:project_list_fp' fp=fp.data.fp %}">{{fp.data}}</a></td><td>{{fp.num_projects}}</td><td>{{fp.num_partners}}</td><td>{{fp.ecMaxContribution}}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

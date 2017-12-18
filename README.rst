@@ -41,6 +41,7 @@ it defaults to the first directory listed in STATICFILES_DIRS.
 command line.
 
 6. If the example webpages are enabled,start the development server server and visit
+<http://127.0.0.1:8000/fprogramdb/> to get a list of all loaded FrameWork Program, or to
 <http://127.0.0.1:8000/fprogramdb/fpH2020> to get a list of all projects loaded from H2020
 
 

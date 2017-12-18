@@ -1,16 +1,16 @@
 import difflib
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.forms import formset_factory
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views import View
 from .forms import PartnerSelect, PartnerId, PartnerForm, PartnerSearch
 
-from .models import Partner, PartnerProject, Project
-
+from .models import Partner, PartnerProject, Project, FpData, FP_CODE
 
 if hasattr(settings, 'FPROGRAMDB_BASETEMPLATE'):
     fprogramdb_basetemplate = settings.FPROGRAMDB_BASETEMPLATE
@@ -34,6 +34,33 @@ class ProjectListFP(View):
                 for _p in projects],
             'fprogramdb_basetemplate': fprogramdb_basetemplate
         })
+
+
+class FrontPage(View):
+    template_name = "fprogramdb/front_page.html"
+
+    @method_decorator(login_required)
+    def get(self, request):
+        _context = {
+            'title': 'List o',
+            'fp_data': [],
+            'fprogramdb_basetemplate': fprogramdb_basetemplate
+        }
+        for fp_label in FP_CODE:
+            try:
+                _data = FpData.objects.get(fp=fp_label[1])
+                _context['fp_data'].append({
+                    'data': _data,
+                    'num_projects': Project.objects.filter(fp=fp_label[1]).count(),
+                    'num_partners': PartnerProject.objects.filter(
+                        project__fp=fp_label[1],
+                        partner__merged=False).count(),
+                    'ecMaxContribution': Project.objects.filter(fp=fp_label[1]).aggregate(Sum('ecMaxContribution'))['ecMaxContribution__sum']
+                })
+            except (KeyError, FpData.DoesNotExist):
+                pass
+        print _context
+        return render(request, self.template_name, _context)
 
 
 class ProjectListPIC(View):
@@ -104,10 +131,10 @@ class ProjectListPIC(View):
                         })
                     except Partner.DoesNotExist:
                         pass
-                    _context['partner_form']['merging_partner_formdata'] = _res
-                    _context['partner_form']['selected_formset'] = partneridset(initial=_initial, prefix="selected")
+                _context['partner_form']['merging_partner_formdata'] = _res
+                _context['partner_form']['selected_formset'] = partneridset(initial=_initial, prefix="selected")
 
-            if 'Merge' in request.POST:
+            elif 'Merge' in request.POST:
                 formset_selected = partneridset(request.POST, request.FILES, prefix="selected")
                 alias_objects = []
                 for form in formset_selected:
@@ -120,8 +147,12 @@ class ProjectListPIC(View):
                             pass
                 dest_object = Partner.objects.get(pic=pic)
                 dest_object.merge_with_models(alias_objects)
+                if pic:
+                    return redirect('fprogramdb:project_list_pic', pic=pic)
+                elif partner_id:
+                    return redirect('fprogramdb:project_list_id', pic=partner_id)
 
-            if 'Search' in request.POST:
+            elif 'Search' in request.POST:
                 partner_search_form = PartnerSearch(request.POST, request.FILES)
                 if partner_search_form.is_valid():
                     test = partner_search_form.cleaned_data['search_field']
@@ -137,7 +168,8 @@ class ProjectListPIC(View):
                                 'partner_id': p.id,
                                 'pic': p.pic,
                                 'shortName': p.shortName,
-                                'legalName': p.legalName
+                                'legalName': p.legalName,
+                                'project_number': PartnerProject.objects.filter(partner=p).count()
                             })
                     formset = partnerformset(initial=_initial, prefix="merge_view")
 
@@ -155,6 +187,9 @@ class ProjectListPIC(View):
             partner = Partner.objects.get(pic=pic)
         elif partner_id:
             partner = Partner.objects.get(id=partner_id)
+        else:
+            pass
+
         _context = {
             'title': self.title.format(acronym=partner.shortName),
             'fprogramdb_basetemplate': fprogramdb_basetemplate,
@@ -177,22 +212,23 @@ class ProjectListPIC(View):
                         'partner_id': p.id,
                         'pic': p.pic,
                         'shortName': p.shortName,
-                        'legalName': p.legalName
+                        'legalName': p.legalName,
+                        'project_number': PartnerProject.objects.filter(partner=p).count()
                     })
             _context['merge_view_formset'] = partnerformset(initial=_initial, prefix="merge_view")
         elif partner.merged:
             _context['initial_projects'] = [
                 {
-                    'data': [pp.project.fp, pp.project.acronym, pp.project.startDate, pp.project.endDate, pp.ecContribution,
-                             pp.coordinator],
+                    'data': [pp.project.fp, pp.project.acronym, pp.project.startDate, pp.project.endDate,
+                             pp.ecContribution, pp.project.partner_count, pp.coordinator],
                     'rcn': pp.project.rcn
                 }
                 for pp in PartnerProject.objects.filter(original_partner=partner).order_by('project__startDate')]
         else:
             _context['projects'] = [
                 {
-                    'data': [pp.project.fp, pp.project.acronym, pp.project.startDate, pp.project.endDate, pp.ecContribution,
-                             pp.coordinator],
+                    'data': [pp.project.fp, pp.project.acronym, pp.project.startDate, pp.project.endDate,
+                             pp.ecContribution, pp.project.partner_count, pp.coordinator],
                     'rcn': pp.project.rcn
                 }
                 for pp in PartnerProject.objects.filter(partner=partner).order_by('project__startDate')]

@@ -18,6 +18,7 @@ class PartnerSelect(forms.Form):
     pic = forms.IntegerField(required=False)
     shortName = forms.CharField(max_length=255, required=False)
     legalName = forms.CharField(max_length=255)
+    project_number = forms.IntegerField(required=False)
 
 
 class PartnerSearch(forms.Form):

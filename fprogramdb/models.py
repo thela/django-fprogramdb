@@ -36,6 +36,7 @@ class FpData(models.Model):
     def __unicode__(self):
         return self.fp
 
+
 class Partner(models.Model):
     CATEGORY_CODE = (
         (u'PRC', u'Private for-profit entities (excluding Higher or Secondary Education Establishments)'),
@@ -177,6 +178,9 @@ class Project(models.Model):
                 return u"{title}[..]".format(title=self.title[:20])
             else:
                 return u"{title}".format(title=self.title)
+
+    def partner_count(self):
+        return PartnerProject.objects.filter(project=self).count()
 
 
 class PartnerProject(models.Model):

@@ -58,6 +58,7 @@
             </div>
         </div>
     {% endif %}
+
     {% if partner_form and partner_form.merging_partner_formdata %}
         <ul>
             <form method="post" action=""> {% csrf_token %}{{ partner_form.selected_formset.management_form }}
@@ -97,6 +98,8 @@
             {{ merge_view_formset.management_form }}
             {% trans "View Partners to be merged" as to_be_merged %}
             <input type="submit" name="MergeView" value='{{to_be_merged}}'/>
+            <input onclick="location.href = '{% if partner.pic %}{% url 'fprogramdb:project_list_pic' pic=partner.pic %}
+                                {% else %}{% url 'fprogramdb:project_list_id' partner_id=partner.id %}{% endif %}';" type="submit" value='Back'/>
             <table class="table"><tbody>
                 {% for form in merge_view_formset %}
                     <tr><td>{{form.selected}}</td>
@@ -111,19 +114,27 @@
                                 {% else %}{% url 'fprogramdb:project_list_id' partner_id=form.partner_id.value %}{% endif %}">
                                 {{form.legalName.value}}
                             </a>
+                        </td>
+                        <td>
+                            <a href="{% if form.pic.value %}{% url 'fprogramdb:project_list_pic' pic=form.pic.value %}
+                                {% else %}{% url 'fprogramdb:project_list_id' partner_id=form.partner_id.value %}{% endif %}">
+                                {{form.project_number.value}}
+                            </a>
                             {{form.shortName.as_hidden}}{{form.partner_id.as_hidden}}{{form.pic.as_hidden}}{{form.shortName.as_hidden}}{{form.legalName.as_hidden}}
                         </td>
                     </tr>
                 {% endfor %}
             </tbody></table>
             <input type="submit" name="MergeView" value='{{to_be_merged}}'/>
+            <input onclick="location.href = '{% if partner.pic %}{% url 'fprogramdb:project_list_pic' pic=partner.pic %}
+                                {% else %}{% url 'fprogramdb:project_list_id' partner_id=partner.id %}{% endif %}';" type="submit" value='Back'/>
         </form>
     {% endif %}
     {% if projects %}
         <table class="table">
             <thead>
                 <tr>
-                    <th>fp</th><th>acronym</th><th>startDate</th><th>endDate</th><th>ecContribution</th><th>coordinator?</th>
+                    <th>fp</th><th>acronym</th><th>startDate</th><th>endDate</th><th>ecContribution</th><th># partners</th><th>coordinator?</th>
                 </tr>
             </thead>
 
@@ -141,7 +152,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>fp</th><th>acronym</th><th>startDate</th><th>endDate</th><th>ecContribution</th><th>coordinator?</th>
+                    <th>fp</th><th>acronym</th><th>startDate</th><th>endDate</th><th>ecContribution</th><th># partners</th><th>coordinator?</th>
                 </tr>
             </thead>
 
