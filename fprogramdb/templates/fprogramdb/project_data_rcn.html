@@ -1,22 +1,23 @@
 {% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
 
 {% block content %}
-    <h1><a href="http://cordis.europa.eu/project/rcn/{{project.rcn}}_en.html">{{project.title}} - {{project.acronym}}</a></h1>
-    <p>fp <a href="{% url 'fprogramdb:project_list_fp' fp=project.fp %}">{{project.fp}}</a></p>
-    <p>rcn {{project.rcn}}</p>
-    <p>GA {{project.GA}}</p>
-    <p>objective {{project.objective}}</p>
-    <p>startDate {{project.startDate}}</p>
-    <p>endDate {{project.endDate}}</p>
-    <p>totalCost {{project.totalCost}}</p>
-    <p>ecMaxContribution {{project.ecMaxContribution}}</p>
-    <p>duration {{project.duration}}</p>
-    <p>programmes {% for programme in project.programme.all %}
+    <div class="row"><div class="col-md-12"><h1><a href="http://cordis.europa.eu/project/rcn/{{project.rcn}}_en.html">{{project.title}} - {{project.acronym}}</a></h1></div></div>
+    <div class="row"><div class="col-md-4">fp</div> <div class="col-md-6"><a href="{% url 'fprogramdb:project_list_fp' fp=project.fp %}">{{project.fp}}</a></div></div>
+    <div class="row"><div class="col-md-4">rcn</div> <div class="col-md-6">{{project.rcn}}</div></div>
+    <div class="row"><div class="col-md-4">GA</div> <div class="col-md-6">{{project.GA}}</div></div>
+    <div class="row"><div class="col-md-4">objective</div> <div class="col-md-6">{{project.objective}}</div></div>
+    <div class="row"><div class="col-md-4">startDate</div> <div class="col-md-6">{{project.startDate}}</div></div>
+    <div class="row"><div class="col-md-4">endDate</div> <div class="col-md-6">{{project.endDate}}</div></div>
+    <div class="row"><div class="col-md-4">totalCost</div> <div class="col-md-6">{{project.totalCost}}</div></div>
+    <div class="row"><div class="col-md-4">ecMaxContribution</div> <div class="col-md-6">{{project.ecMaxContribution}}</div></div>
+    <div class="row"><div class="col-md-4">duration</div> <div class="col-md-6">{{project.duration}}</div></div>
+    <div class="row"><div class="col-md-4">programmes</div> <div class="col-md-6">{% for programme in project.programme.all %}
             {{ programme }}{% if not forloop.last %},{% endif %}
-        {% endfor %}</p>
-    <p>call {{project.call}}</p>
-    <p>topic {{project.topic}}</p>
-    <p>{% for partnerproject in partnerprojects %}
+        {% endfor %}</div></div>
+    <div class="row"><div class="col-md-4">call</div> <div class="col-md-6">{{project.call}}</div></div>
+    <div class="row"><div class="col-md-4">topic</div> <div class="col-md-6">{{project.topic}}</div></div>
+    <div class="row"><div class="col-md-4"><small><em>source</em></small></div> <div class="col-md-6"><small><em><a href="{{project.source.euodp_page}}">{{project.source.euodp_page}}</a> - last update {{project.source.update_date}}</em></small></div></div>
+    <div class="row"><div class="col-md-12">{% for partnerproject in partnerprojects %}
 
             <a href="{% if partnerproject.partner.pic %}
                     {% url 'fprogramdb:project_list_pic' pic=partnerproject.partner.pic %}
@@ -29,5 +30,5 @@
                 {{partnerproject.partner.legalName}}
             {% endif %}
         </a>,
-    {% endfor %}</p>
+    {% endfor %}</div></div>
 {% endblock %}
