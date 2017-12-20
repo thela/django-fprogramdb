@@ -37,8 +37,4 @@ setup(
         'Topic :: Internet :: WWW/HTTP : Indexing/Search',
         'Topic :: Scientific/Engineering',
     ],
-    install_requires=[
-        'django',
-        'rdflib'
-    ]
 )
