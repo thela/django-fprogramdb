@@ -23,6 +23,7 @@ setup(
         'Environment :: Web Environment',
         'Framework :: Django',
         'Framework :: Django :: 1.9',
+        'Framework :: Django :: 2.0',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)'
@@ -30,8 +31,14 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP : Indexing/Search',
         'Topic :: Scientific/Engineering',
     ],
+    install_requires=[
+        'django',
+        'rdflib'
+    ]
 )

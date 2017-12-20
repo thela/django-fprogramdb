@@ -23,6 +23,7 @@
     <div class="row"><div class="col-md-4">City</div> <div class="col-md-6">{{partner.city}}</div></div>
     <div class="row"><div class="col-md-4">Country</div> <div class="col-md-6">{{partner.country}}</div></div>
     <div class="row"><div class="col-md-4">PostalCode</div> <div class="col-md-6">{{partner.postalCode}}</div></div>
+    <div class="row"><div class="col-md-4"><small><em>source</em></small></div> <div class="col-md-6"><small><em><a href="{{partner.source.euodp_page}}">{{partner.source.euodp_page}}</a> - last update {{partner.source.update_date}}</em></small></div></div>
     <script>
         window.addEventListener('load', function() {
             $('.collapse-similarities').each(function(){$(this).collapse('hide')})

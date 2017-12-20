@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
+
 import difflib
 
 from django.contrib.auth.decorators import login_required
@@ -41,6 +44,7 @@ class FrontPage(View):
 
     @method_decorator(login_required)
     def get(self, request):
+        #TODO show details of last update
         _context = {
             'title': 'List o',
             'fp_data': [],
@@ -59,7 +63,7 @@ class FrontPage(View):
                 })
             except (KeyError, FpData.DoesNotExist):
                 pass
-        print _context
+        print(_context)
         return render(request, self.template_name, _context)
 
 

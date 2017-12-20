@@ -48,13 +48,13 @@ command line.
 Disclaimer
 ----------
 
-This app is in no way connected to the EC.
+This app is in no way connected to, or endorsed by the EC.
 
 FProgramDB is, at the moment, a proof of concept:
 - It *does NOT* ship with any data from the EC CORDIS Database.
 - It *does NOT* aim at representing what is really happening at a EC level in respect of Research Funding.
 
-It does, however, allow to make use of data freely available on the https://data.europa.eu/euodp regarding EC Research
+It does, however, enable to make use of data freely available on the https://data.europa.eu/euodp regarding EC Research
 Funding, and for that data (downloaded at runtime) applies the © European Union, 1995-2017 and the legal notice found at
 this link: https://ec.europa.eu/info/legal-notice_en.
 

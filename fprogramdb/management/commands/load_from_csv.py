@@ -6,10 +6,17 @@ import os
 import posixpath
 
 import sys
-import urllib2
-
+try:
+    from urllib.request import urlopen
+    from urllib.error import HTTPError
+except ImportError:
+    from urllib2 import urlopen
+    from urllib2 import HTTPError
 import csv
-import urlparse
+try:
+    from urllib import parse
+except ImportError:
+    import urlparse as parse
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -17,9 +24,15 @@ from django.db.models import Q
 from django.db import transaction
 
 from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, EuodpData, FpData
-
+try:
+    from importlib import reload
+except ImportError:
+    pass
 reload(sys)
-sys.setdefaultencoding('utf-8')
+try:
+    sys.setdefaultencoding('utf-8')
+except AttributeError:
+    pass
 
 
 sourceurls = {
@@ -63,18 +76,18 @@ else:
 
 def get_filename_from_uri(uri):
     return posixpath.basename(
-            urlparse.urlsplit(uri).path
+            parse.urlsplit(uri).path
         )
 
 
 def download_file(uri, filename):
     print('download', uri, filename)
     try:
-        csv_urlfile = urllib2.urlopen(uri)
+        csv_urlfile = urlopen(uri)
         with open(os.path.join(xml_dir, filename), 'wb') as csvfile:
             csvfile.write(csv_urlfile.read())
         print('{file} downloaded'.format(file=filename))
-    except urllib2.HTTPError:
+    except HTTPError:
         print('{file} not found'.format(file=filename))
 
 
@@ -128,26 +141,30 @@ def check_updates(euodp_data=None, rdf_url=None, file_uri_to_check=None):
 
 
 class Command(BaseCommand):
-    def programmes_to_objects(self, fp='H2020'):
+    def programmes_to_objects(self, fp='H2020', euodp_data=None):
+
+        for key in self.fp_data['programmes'][0].keys():
+            if 'rcn' in key or 'RCN' in key:
+                __rcn_key = key
 
         # because headers change with the programme
         programmes_headers = {
             'H2020': {
-                'rcn': 'rcn',
+                'rcn': __rcn_key,
                 'code': 'code',
                 'title': 'title',
                 'shortTitle': 'shortTitle',
                 'language': 'language',
             },
             'FP7': {
-                'rcn': '\xef\xbb\xbfRCN',
+                'rcn': __rcn_key,
                 'code': 'Code',
                 'title': 'Title',
                 'shortTitle': 'ShortTitle',
                 'language': 'Language',
             },
             'FP6': {
-                'rcn': '\xef\xbb\xbf"rcn"',
+                'rcn': __rcn_key,
                 'code': 'code',
                 'title': 'title',
                 'shortTitle': 'shortTitle',
@@ -170,13 +187,14 @@ class Command(BaseCommand):
                         'code': programme[programmes_headers[fp]['code']],
                         'title': programme[programmes_headers[fp]['title']],
                         'shortTitle': programme[programmes_headers[fp]['shortTitle']],
+                        'source': euodp_data,
                     }
                 )
                 _new += 1 if created else 0
         print('{fp} - {new} programmes created, {index} processed'.format(
             fp=fp, new=_new, index=index+1))
 
-    def topics_to_objects(self, fp='H2020'):
+    def topics_to_objects(self, fp='H2020', euodp_data=None):
         _new = 0
         for index, topic in enumerate(self.fp_data['topics']):
             print('{fp} - topic {index}/{len}'.format(
@@ -192,14 +210,16 @@ class Command(BaseCommand):
                     'title': topic['title'],
                     'legalBasisRcn': topic['legalBasisRcn'],
                     'legalBasisCode': topic['legalBasisCode'],
+                    'source': euodp_data,
                 }
             )
             _new += 1 if created else 0
         print('{fp} - {new} topics created, {index} processed'.format(
             fp=fp, new=_new, index=index+1))
 
-    def projects_to_objects(self, fp='H2020'):
+    def projects_to_objects(self, fp='H2020', euodp_data=None):
         _new = 0
+
         for index, project in enumerate(self.fp_data['projects']):
             print('{fp} - project {index}/{len}'.format(
                 fp=fp,
@@ -211,7 +231,10 @@ class Command(BaseCommand):
             except KeyError:
                 GA = project['reference']
 
-            rcn = project['\xef\xbb\xbfrcn']
+            try:
+                rcn = project['\xef\xbb\xbfrcn']
+            except KeyError:
+                rcn = project['\ufeffrcn']
 
             try:
                 start_date = datetime.datetime.strptime(
@@ -229,7 +252,7 @@ class Command(BaseCommand):
 
             call, created = Call.objects.update_or_create(
                 title=project['call'],
-                defaults={'fundingScheme': project['fundingScheme'], 'fp': fp}
+                defaults={'fundingScheme': project['fundingScheme'], 'fp': fp, 'source': euodp_data}
             )
 
             try:
@@ -242,6 +265,7 @@ class Command(BaseCommand):
                     topics=project['topics']))
                 topic = Topic(code=project['topics'])
                 topic.fp = fp
+                topic.source = euodp_data
                 topic.save()
                 print(topic.id)
             try:
@@ -252,6 +276,11 @@ class Command(BaseCommand):
                 ecMaxContribution = float(project['ecMaxContribution'].replace(",", "."))
             except ValueError:
                 ecMaxContribution = 0
+
+            try:
+                UNICODE_EXISTS = bool(type(unicode))
+            except NameError:
+                unicode = str
 
             project_ob, created = Project.objects.update_or_create(
                 rcn=rcn,
@@ -266,7 +295,8 @@ class Command(BaseCommand):
                     'totalCost': total_cost,
                     'ecMaxContribution': ecMaxContribution,
                     'call': call,
-                    'topic': topic
+                    'topic': topic,
+                    'source': euodp_data,
                 }
             )
             _new += 1 if created else 0
@@ -280,13 +310,14 @@ class Command(BaseCommand):
                     print('GA {ga} - missing programme: {programme_code}'.format(ga=GA, programme_code=programme_code))
                     _programme = Programme(code=programme_code)
                     _programme.fp = fp
+                    _programme.source = euodp_data
                     _programme.save()
                     project_ob.programme.add(_programme)
                     project_ob.save()
         print('{fp} - {new} projects created, {index} processed'.format(
             fp=fp, new=_new, index=index+1))
 
-    def organization_dict_to_object(self, pic, project_partner, fp_organization_headers):
+    def organization_dict_to_object(self, pic, project_partner, fp_organization_headers, euodp_data=None):
         """
         translation of a row of CORDIS organizations file into an object of the db. It tries to override db 
         inconsistencies like missing PICs or different data for each project. 
@@ -328,21 +359,21 @@ class Command(BaseCommand):
                 )
 
             elif pic == '':
-                    _query = Q()
-                    if project_partner[fp_organization_headers['name']] != '':
-                        _query |= Q(legalName=project_partner[fp_organization_headers['name']])
-                    if project_partner[fp_organization_headers['shortName']] != '':
-                        _query |= Q(shortName=project_partner[fp_organization_headers['shortName']])
-                    if project_partner[fp_organization_headers['country']] != '':
-                        _query &= Q(country=project_partner[fp_organization_headers['country']])
+                _query = Q()
+                if project_partner[fp_organization_headers['name']] != '':
+                    _query |= Q(legalName=project_partner[fp_organization_headers['name']])
+                if project_partner[fp_organization_headers['shortName']] != '':
+                    _query |= Q(shortName=project_partner[fp_organization_headers['shortName']])
+                if project_partner[fp_organization_headers['country']] != '':
+                    _query &= Q(country=project_partner[fp_organization_headers['country']])
 
-                    print('\n', project_partner, _query, Partner.objects.filter(
-                        _query
-                    ))
+                print('\n', project_partner, _query, Partner.objects.filter(
+                    _query
+                ))
 
-                    partner_ob = Partner.objects.get(
-                        _query
-                    )
+                partner_ob = Partner.objects.get(
+                    _query
+                )
         except Partner.DoesNotExist:
             created = True
             partner_ob = Partner()
@@ -364,6 +395,7 @@ class Command(BaseCommand):
             'city': project_partner[fp_organization_headers['city']],
             'street': project_partner[fp_organization_headers['street']],
             'country': project_partner[fp_organization_headers['country']],
+            'source': euodp_data,
         }.items():
             setattr(partner_ob, key, value)
         partner_ob.save()
@@ -379,7 +411,7 @@ class Command(BaseCommand):
 
         return partner_ob, created
 
-    def organization_dict_to_object_beforeh2020(self, pic, project_partner, fp_organization_headers):
+    def organization_dict_to_object_beforeh2020(self, pic, project_partner, fp_organization_headers, euodp_data=None):
         """
         translation of a row of CORDIS organizations file into an object of the db for fps before H2020.
         We try to ensure consistence with current H2020 data, and before H2020 organizations db is very messy.
@@ -453,17 +485,22 @@ class Command(BaseCommand):
                     'postalCode': project_partner[fp_organization_headers['postCode']],
                     'city': project_partner[fp_organization_headers['city']],
                     'street': project_partner[fp_organization_headers['street']],
-                    'country': project_partner[fp_organization_headers['country']]
+                    'country': project_partner[fp_organization_headers['country']],
+                    'source': euodp_data,
                 }.items():
                     setattr(partner_ob, key, value)
                 partner_ob.save()
         return partner_ob, created
 
-    def organizations_to_objects(self, fp='H2020'):
+    def organizations_to_objects(self, fp='H2020', euodp_data=None):
         # because headers change with the programme
+
+        for key in self.fp_data['organizations'][0].keys():
+            if 'Rcn' in key:
+                __rcn_key = key
         organizations_headers = {
             'H2020': {
-                'projectRcn': 'projectRcn',
+                'projectRcn': __rcn_key,
                 'projectID': 'projectID',
                 'projectAcronym': 'projectAcronym',
                 'role': 'role',
@@ -488,7 +525,7 @@ class Command(BaseCommand):
                 'contactEmail': 'contactEmail',
             },
             'FP7': {
-                'projectRcn': '\xef\xbb\xbfprojectRcn',
+                'projectRcn': __rcn_key,
                 'projectID': 'projectReference',
                 'projectAcronym': 'projectAcronym',
                 'role': 'role',
@@ -513,7 +550,7 @@ class Command(BaseCommand):
                 'contactEmail': 'contactEmail',
             },
             'FP6': {
-                'projectRcn': '\xef\xbb\xbfprojectRcn',
+                'projectRcn': __rcn_key,
                 'projectID': 'projectReference',
                 'projectAcronym': 'projectAcronym',
                 'role': 'role',
@@ -553,11 +590,11 @@ class Command(BaseCommand):
                 partner_ob, created = self.organization_dict_to_object(
                     pic,
                     project_partner,
-                    organizations_headers['H2020']
+                    organizations_headers['H2020'], euodp_data
                 )
             else:
                 partner_ob, created = self.organization_dict_to_object_beforeh2020(
-                    pic, project_partner, organizations_headers[fp])
+                    pic, project_partner, organizations_headers[fp], euodp_data)
 
             try:
                 ec_contribution = float(project_partner[organizations_headers[fp]['ecContribution']].replace(',', '.'))
@@ -584,20 +621,22 @@ class Command(BaseCommand):
         :param fp: framework string
         :param use_cached: if to use files already downloaded
         :param update_only: downloads resource if updated online
+
+        returns the FpData object
         """
 
         fp_data_ob, fp_created = FpData.objects.get_or_create(fp=fp)
         if fp_created:
             for data in ['organizations', 'projects', 'programmes', 'topics']:
                 if sourceurls[fp][data][1]:
-                    sourcefile = EuodpData()
+                    euodp_data = EuodpData()
 
-                    sourcefile.euodp_url = sourceurls[fp][data][1]
-                    sourcefile.file_url = sourceurls[fp][data][0]
-                    sourcefile.save()
+                    euodp_data.euodp_url = sourceurls[fp][data][1]
+                    euodp_data.file_url = sourceurls[fp][data][0]
+                    euodp_data.save()
 
                     # sets the correct EuodpData object in FpData
-                    setattr(fp_data_ob, data, sourcefile)
+                    setattr(fp_data_ob, data, euodp_data)
             fp_data_ob.save()
 
         for data in ['organizations', 'projects', 'programmes', 'topics']:
@@ -610,14 +649,14 @@ class Command(BaseCommand):
 
                 # choose when to download again the csv file
                 if (not os.path.exists(os.path.join(
-                            xml_dir,
-                            _filename)
-                        )  # no cache to use
-                    or not use_cached  # don't use cache
-                    or (update_only  # just download updated
-                        and (not euodp_data.update_date or
-                                     update_date.date() > euodp_data.update_date
-                             ))
+                        xml_dir,
+                        _filename)
+                )  # no cache to use
+                        or not use_cached  # don't use cache
+                        or (update_only  # just download updated
+                            and (not euodp_data.update_date or
+                                 update_date.date() > euodp_data.update_date
+                        ))
                 ):
                     download_file(sourceurls[fp][data][0], _filename)
                     euodp_data.update_date = update_date if update_date else check_updates(
@@ -625,9 +664,16 @@ class Command(BaseCommand):
                         file_uri_to_check=euodp_data.file_url
                     )
                     euodp_data.save()
+                elif not euodp_data.update_date:
+                    euodp_data.update_date = update_date if update_date else check_updates(
+                        rdf_url=euodp_data.euodp_url,
+                        file_uri_to_check=euodp_data.file_url
+                    )
+                    euodp_data.save()
 
-                with open(os.path.join(xml_dir, _filename), 'rb') as csvfile:
+                with open(os.path.join(xml_dir, _filename), 'r') as csvfile:
                     self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
+        return fp_data_ob
 
     def read_fp(self, fp='H2020', cached=True, update_only=False):
         """
@@ -643,19 +689,19 @@ class Command(BaseCommand):
             'topics': [],
         }
 
-        self.read_csv_lists(fp, cached, update_only)
+        fp_data_ob = self.read_csv_lists(fp, cached, update_only)
 
         if not update_only:
             with transaction.atomic():
-                self.programmes_to_objects(fp)
+                self.programmes_to_objects(fp, fp_data_ob.programmes)
 
             if fp == 'H2020':
                 with transaction.atomic():
-                    self.topics_to_objects(fp)
+                    self.topics_to_objects(fp, fp_data_ob.topics)
             with transaction.atomic():
-                self.projects_to_objects(fp)
+                self.projects_to_objects(fp, fp_data_ob.projects)
             with transaction.atomic():
-                self.organizations_to_objects(fp)
+                self.organizations_to_objects(fp, fp_data_ob.organizations)
 
     def add_arguments(self, parser):
         # Positional arguments

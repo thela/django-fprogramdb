@@ -16,6 +16,7 @@ FP_CODE = (
 )
 
 
+# classes to hold track of the source of data
 class EuodpData(models.Model):
     euodp_url = models.URLField()
     file_url = models.URLField()
@@ -24,20 +25,29 @@ class EuodpData(models.Model):
     def __unicode__(self):
         return self.file_url
 
+    def euodp_page(self):
+        return self.euodp_url[:-4]
 
 class FpData(models.Model):
     fp = models.CharField(max_length=5, choices=FP_CODE, default='H2020')
 
-    organizations = models.ForeignKey(EuodpData, related_name='organizations', null=True)
-    projects = models.ForeignKey(EuodpData, related_name='projects', null=True)
-    programmes = models.ForeignKey(EuodpData, related_name='programmes', null=True)
-    topics = models.ForeignKey(EuodpData, related_name='topics', null=True)
+    organizations = models.ForeignKey(EuodpData, related_name='organizations', on_delete=models.SET_NULL, null=True)
+    projects = models.ForeignKey(EuodpData, related_name='projects', on_delete=models.SET_NULL, null=True)
+    programmes = models.ForeignKey(EuodpData, related_name='programmes', on_delete=models.SET_NULL, null=True)
+    topics = models.ForeignKey(EuodpData, related_name='topics', on_delete=models.SET_NULL, null=True)
 
     def __unicode__(self):
         return self.fp
 
 
-class Partner(models.Model):
+class SourceData(models.Model):
+    source = models.ForeignKey(EuodpData, on_delete=models.PROTECT)
+
+    class Meta:
+        abstract = True
+
+
+class Partner(SourceData):
     CATEGORY_CODE = (
         (u'PRC', u'Private for-profit entities (excluding Higher or Secondary Education Establishments)'),
         (u'HES', u'Higher or Secondary Education Establishments'),
@@ -121,7 +131,7 @@ class Partner(models.Model):
                 self.save()
 
 
-class Topic(models.Model):
+class Topic(SourceData):
     fp = models.CharField(max_length=5, choices=FP_CODE, default='H2020')
     rcn = models.CharField(max_length=20)
     code = models.CharField(max_length=20)
@@ -133,7 +143,7 @@ class Topic(models.Model):
         return u"{code}".format(code=self.code)
 
 
-class Call(models.Model):
+class Call(SourceData):
     fp = models.CharField(max_length=2, choices=FP_CODE, default='H2020')
     title = models.CharField(max_length=200, blank=True, null=True)
     fundingScheme = models.CharField(max_length=200, blank=True, null=True)
@@ -142,7 +152,7 @@ class Call(models.Model):
         return u"{title}".format(title=self.title)
 
 
-class Programme(models.Model):
+class Programme(SourceData):
     fp = models.CharField(max_length=2, choices=FP_CODE, default='H2020')
     rcn = models.CharField(max_length=20, primary_key=True)
     code = models.CharField(max_length=20)
@@ -153,7 +163,7 @@ class Programme(models.Model):
         return u"{code}".format(code=self.code)
 
 
-class Project(models.Model):
+class Project(SourceData):
     fp = models.CharField(max_length=5, choices=FP_CODE, default='H2020')
 
     rcn = models.CharField(max_length=20, primary_key=True)
@@ -167,8 +177,8 @@ class Project(models.Model):
     ecMaxContribution = models.DecimalField(max_digits=13, decimal_places=2)
     duration = models.IntegerField(null=True, blank=True)
     programme = models.ManyToManyField(Programme)
-    call = models.ForeignKey(Call)
-    topic = models.ForeignKey(Topic, blank=True, null=True)
+    call = models.ForeignKey(Call, on_delete=models.PROTECT)
+    topic = models.ForeignKey(Topic, on_delete=models.SET_NULL, blank=True, null=True)
 
     def __unicode__(self):
         if self.acronym:
@@ -188,10 +198,10 @@ class PartnerProject(models.Model):
     coordinator = models.BooleanField()
     ecContribution = models.DecimalField(max_digits=13, decimal_places=2)
 
-    partner = models.ForeignKey(Partner)
-    project = models.ForeignKey(Project)
+    partner = models.ForeignKey(Partner, on_delete=models.PROTECT)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT)
 
-    original_partner = models.ForeignKey(Partner, related_name='original_partner', null=True)
+    original_partner = models.ForeignKey(Partner, on_delete=models.SET_NULL, related_name='original_partner', null=True)
 
     def __unicode__(self):
         return u"{project} - {partner}".format(
