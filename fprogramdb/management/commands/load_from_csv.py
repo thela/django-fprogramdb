@@ -67,9 +67,9 @@ sourceurls = {
     },
 }
 
-if settings.FPROGRAMDB_DIR:
+try:
     xml_dir = settings.FPROGRAMDB_DIR
-else:
+except AttributeError:
     xml_dir = settings.STATICFILES_DIRS[0]
 # TODO handle script output with django loggers
 
@@ -81,7 +81,10 @@ def get_filename_from_uri(uri):
 
 
 def download_file(uri, filename):
+    if not os.path.exists(os.path.join(xml_dir)):
+        os.mkdir(os.path.join(xml_dir))
     print('download', uri, filename)
+
     try:
         csv_urlfile = urlopen(uri)
         with open(os.path.join(xml_dir, filename), 'wb') as csvfile:
