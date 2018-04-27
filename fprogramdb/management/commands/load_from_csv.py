@@ -23,7 +23,8 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.db import transaction
 
-from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, EuodpData, FpData
+from fprogramdb.models import Project, Call, Topic, Programme, Partner, PartnerProject, EuodpData, FpData, sourceurls
+
 try:
     from importlib import reload
 except ImportError:
@@ -35,41 +36,9 @@ except AttributeError:
     pass
 
 
-sourceurls = {
-    'H2020': {
-        'organizations': ["http://cordis.europa.eu/data/cordis-h2020organizations.csv",
-                          "http://data.europa.eu/euodp/en/data/dataset/cordisH2020projects.rdf"],
-        'projects': ["http://cordis.europa.eu/data/cordis-h2020projects.csv",
-                     "http://data.europa.eu/euodp/en/data/dataset/cordisH2020projects.rdf"],
-        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-H2020programmes.csv',
-                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
-        'topics': ['http://cordis.europa.eu/data/reference/cordisref-H2020topics.csv',
-                   "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
-    },
-    'FP7': {
-        'organizations': ["http://cordis.europa.eu/data/cordis-fp7organizations.csv",
-                          "http://data.europa.eu/euodp/en/data/dataset/cordisfp7projects.rdf"],
-        'projects': ["http://cordis.europa.eu/data/cordis-fp7projects.csv",
-                     "http://data.europa.eu/euodp/en/data/dataset/cordisfp7projects.rdf"],
-        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP7programmes.csv',
-                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
-        'topics': [None, None],
-    },
-    'FP6': {
-        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP6programmes.csv',
-                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
-        'organizations': ["http://cordis.europa.eu/data/cordis-fp6organizations.csv",
-                          "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
-        'projects': [
-            "http://cordis.europa.eu/data/cordis-fp6projects.csv",
-            "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
-        'topics': [None, None],
-    },
-}
-
-try:
+if settings.FPROGRAMDB_DIR:
     xml_dir = settings.FPROGRAMDB_DIR
-except AttributeError:
+else:
     xml_dir = settings.STATICFILES_DIRS[0]
 # TODO handle script output with django loggers
 
@@ -81,10 +50,7 @@ def get_filename_from_uri(uri):
 
 
 def download_file(uri, filename):
-    if not os.path.exists(os.path.join(xml_dir)):
-        os.mkdir(os.path.join(xml_dir))
     print('download', uri, filename)
-
     try:
         csv_urlfile = urlopen(uri)
         with open(os.path.join(xml_dir, filename), 'wb') as csvfile:
@@ -154,9 +120,9 @@ class Command(BaseCommand):
         programmes_headers = {
             'H2020': {
                 'rcn': __rcn_key,
-                'code': 'code',
-                'title': 'title',
-                'shortTitle': 'shortTitle',
+                'code': 'CODE',
+                'title': 'Title',
+                'shortTitle': 'ShortTitle',
                 'language': 'language',
             },
             'FP7': {
@@ -198,6 +164,31 @@ class Command(BaseCommand):
             fp=fp, new=_new, index=index+1))
 
     def topics_to_objects(self, fp='H2020', euodp_data=None):
+
+        # because headers change with the programme
+        topics_headers = {
+            'H2020': {
+                'rcn': 'topicRcn',
+                'code': 'topicCode',
+                'title': 'title',
+                'legalBasisRcn': 'legalBasis',
+                'legalBasisCode': 'legalBasisCode',
+            },
+            'FP7': {
+                'rcn': 'topicRcn',
+                'code': 'topicCode',
+                'title': 'title',
+                'legalBasisRcn': 'legalBasisRcn',
+                'legalBasisCode': 'legalBasisCode',
+            },
+            'FP6': {
+                'rcn': 'topicRcn',
+                'code': 'topicCode',
+                'title': 'title',
+                'legalBasisRcn': 'legalBasisRcn',
+                'legalBasisCode': 'legalBasisCode',
+            }
+        }
         _new = 0
         for index, topic in enumerate(self.fp_data['topics']):
             print('{fp} - topic {index}/{len}'.format(
@@ -205,14 +196,15 @@ class Command(BaseCommand):
                 index=index, len=len(self.fp_data['topics'])),
                 end='\r'
             )
+
             topic, created = Topic.objects.update_or_create(
-                rcn=topic['topicRcn'],
+                code=topic[topics_headers[fp]['code']],
                 defaults={
                     'fp': fp,
-                    'code': topic['topicCode'],
-                    'title': topic['title'],
-                    'legalBasisRcn': topic['legalBasisRcn'],
-                    'legalBasisCode': topic['legalBasisCode'],
+                    'rcn': topic[topics_headers[fp]['rcn']],
+                    'title': topic[topics_headers[fp]['title']],
+                    'legalBasisRcn': topic[topics_headers[fp]['legalBasisRcn']],
+                    'legalBasisCode': topic[topics_headers[fp]['legalBasisCode']] if topics_headers[fp]['legalBasisCode'] in topic else '',
                     'source': euodp_data,
                 }
             )
@@ -674,7 +666,7 @@ class Command(BaseCommand):
                     )
                     euodp_data.save()
 
-                with open(os.path.join(xml_dir, _filename), 'r') as csvfile:
+                with open(os.path.join(xml_dir, _filename), encoding='Latin1') as csvfile:
                     self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
         return fp_data_ob
 

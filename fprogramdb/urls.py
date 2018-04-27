@@ -1,7 +1,8 @@
 """fprogramdb URL Configuration
 """
 from django.conf.urls import url, include
-from . import views
+
+from . import views, manage
 
 app_name = 'fprogramdb'
 
@@ -13,6 +14,11 @@ fpdb_patterns = [
     url(r'^', views.FrontPage.as_view(), name="frontpage"),
 ]
 
+fpdb_manage_patterns = [
+    url(r'manage/euodp_sources', manage.PopulateEuodpSourcesView.as_view(), name="")
+    ]
+
 urlpatterns = [
     url(r'^', include(fpdb_patterns)),
+    url(r'^', include(fpdb_manage_patterns)),
 ]

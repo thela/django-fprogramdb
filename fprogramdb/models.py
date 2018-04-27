@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.core.validators import validate_comma_separated_integer_list
 from django.db import models, transaction
 from django.db.models.query import QuerySet
+from django.urls import reverse
 
 FP_CODE = (
     (u'FP1', u'FP1'),
@@ -16,17 +17,51 @@ FP_CODE = (
 )
 
 
+sourceurls = {
+    'H2020': {
+        'organizations': ["http://cordis.europa.eu/data/cordis-h2020organizations.csv",
+                          "http://data.europa.eu/euodp/en/data/dataset/cordisH2020projects.rdf"],
+        'projects': ["http://cordis.europa.eu/data/cordis-h2020projects.csv",
+                     "http://data.europa.eu/euodp/en/data/dataset/cordisH2020projects.rdf"],
+        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-H2020programmes.csv',
+                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+        'topics': ['http://cordis.europa.eu/data/reference/cordisref-H2020topics.csv',
+                   "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+    },
+    'FP7': {
+        'organizations': ["http://cordis.europa.eu/data/cordis-fp7organizations.csv",
+                          "http://data.europa.eu/euodp/en/data/dataset/cordisfp7projects.rdf"],
+        'projects': ["http://cordis.europa.eu/data/cordis-fp7projects.csv",
+                     "http://data.europa.eu/euodp/en/data/dataset/cordisfp7projects.rdf"],
+        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP7programmes.csv',
+                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+        'topics': [None, None],
+    },
+    'FP6': {
+        'programmes': ['http://cordis.europa.eu/data/reference/cordisref-FP6programmes.csv',
+                       "http://data.europa.eu/euodp/en/data/dataset/cordisref-data.rdf"],
+        'organizations': ["http://cordis.europa.eu/data/cordis-fp6organizations.csv",
+                          "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
+        'projects': [
+            "http://cordis.europa.eu/data/cordis-fp6projects.csv",
+            "http://data.europa.eu/euodp/en/data/dataset/cordisfp6projects.rdf"],
+        'topics': [None, None],
+    },
+}
+
+
 # classes to hold track of the source of data
 class EuodpData(models.Model):
     euodp_url = models.URLField()
     file_url = models.URLField()
     update_date = models.DateField(blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.file_url
 
     def euodp_page(self):
         return self.euodp_url[:-4]
+
 
 class FpData(models.Model):
     fp = models.CharField(max_length=5, choices=FP_CODE, default='H2020')
@@ -36,7 +71,7 @@ class FpData(models.Model):
     programmes = models.ForeignKey(EuodpData, related_name='programmes', on_delete=models.SET_NULL, null=True)
     topics = models.ForeignKey(EuodpData, related_name='topics', on_delete=models.SET_NULL, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.fp
 
 
@@ -71,11 +106,11 @@ class Partner(SourceData):
     merged_with_id = models.IntegerField(blank=True,
                                          null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         if self.shortName:
-            return u"{shortName} - {id}".format(shortName=self.shortName, id=self.id)
+            return u"{shortName} - {id}".format(shortName=self.shortName, id=self.pk)
         else:
-            return u"{legalName}[...] - {id}".format(legalName=self.legalName[0:10], id=self.id)
+            return u"{legalName}[...] - {id}".format(legalName=self.legalName[0:10], id=self.pk)
 
     def merge_with_models(self, alias_objects, keep_old=True):
         """
@@ -130,6 +165,9 @@ class Partner(SourceData):
 
                 self.save()
 
+    def get_absolute_url(self):
+        return reverse('fprogramdb:project_list_id', kwargs={'partner_id': self.pk})
+
 
 class Topic(SourceData):
     fp = models.CharField(max_length=5, choices=FP_CODE, default='H2020')
@@ -137,9 +175,9 @@ class Topic(SourceData):
     code = models.CharField(max_length=20)
     title = models.CharField(max_length=200, blank=True, null=True)
     legalBasisRcn = models.CharField(max_length=20)
-    legalBasisCode = models.CharField(max_length=20)
+    legalBasisCode = models.CharField(max_length=20, blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"{code}".format(code=self.code)
 
 
@@ -148,7 +186,7 @@ class Call(SourceData):
     title = models.CharField(max_length=200, blank=True, null=True)
     fundingScheme = models.CharField(max_length=200, blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"{title}".format(title=self.title)
 
 
@@ -159,7 +197,7 @@ class Programme(SourceData):
     title = models.CharField(max_length=200, blank=True, null=True)
     shortTitle = models.CharField(max_length=200, blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"{code}".format(code=self.code)
 
 
@@ -180,7 +218,7 @@ class Project(SourceData):
     call = models.ForeignKey(Call, on_delete=models.PROTECT)
     topic = models.ForeignKey(Topic, on_delete=models.SET_NULL, blank=True, null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         if self.acronym:
             return u"{acronym}".format(acronym=self.acronym)
         else:
@@ -192,6 +230,8 @@ class Project(SourceData):
     def partner_count(self):
         return PartnerProject.objects.filter(project=self).count()
 
+    def get_absolute_url(self):
+        return reverse('fprogramdb:project_data_rcn', kwargs={'rcn': self.rcn})
 
 class PartnerProject(models.Model):
 
@@ -203,9 +243,8 @@ class PartnerProject(models.Model):
 
     original_partner = models.ForeignKey(Partner, on_delete=models.SET_NULL, related_name='original_partner', null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"{project} - {partner}".format(
             partner=self.partner,
             project=self.project
         )
-
