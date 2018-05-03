@@ -20,10 +20,11 @@ Install FProgramDB::
 
     pip install git+https://github.com/thela/django-fprogramdb
 
-1. Add "fprogramdb" to your INSTALLED_APPS setting like this::
+1. Add "fprogramdb" and django humanize to your INSTALLED_APPS setting like this::
 
     INSTALLED_APPS = [
         ...
+        'django.contrib.humanize',
         'fprogramdb',
     ]
 2. OPTIONAL add a folder to store downloaded cached files to your INSTALLED_APPS:
@@ -38,7 +39,8 @@ it defaults to the first directory listed in STATICFILES_DIRS.
 4. Run `python manage.py migrate` to create the fprogramdb models.
 
 5. Run `python manage.py load_from_csv` to load H2020 database from cordis to the model. It prints its progress on
-command line.
+command line. You can specify the FPs you want to load, with `python manage.py load_from_csv -fp H2020 FP6 FP7`. The
+system will always try to load first H2020 projects, as the database is cleaner.
 
 6. If the example webpages are enabled,start the development server server and visit
 <http://127.0.0.1:8000/fprogramdb/> to get a list of all loaded FrameWork Program, or to

@@ -6,6 +6,9 @@ import os
 import posixpath
 
 import sys
+
+import tokenize
+
 try:
     from urllib.request import urlopen
     from urllib.error import HTTPError
@@ -665,9 +668,13 @@ class Command(BaseCommand):
                         file_uri_to_check=euodp_data.file_url
                     )
                     euodp_data.save()
+                try:
+                    with open(os.path.join(xml_dir, _filename), encoding='utf-8') as csvfile:
+                        self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
+                except UnicodeDecodeError:
+                    with open(os.path.join(xml_dir, _filename), encoding='latin-1') as csvfile:
+                        self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
 
-                with open(os.path.join(xml_dir, _filename), encoding='Latin1') as csvfile:
-                    self.fp_data[data] = list(csv.DictReader(csvfile, delimiter=';', quotechar='"'))
         return fp_data_ob
 
     def read_fp(self, fp='H2020', cached=True, update_only=False):

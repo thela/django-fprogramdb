@@ -1,4 +1,5 @@
 {% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
+{% load humanize %}
 
 {% block content %}
     <table class="table">
@@ -10,7 +11,7 @@
         <tbody>
             {% for fp in fp_data %}
                 <tr>
-                    <td><a href="{% url 'fprogramdb:project_list_fp' fp=fp.data.fp %}">{{fp.data}}</a></td><td>{{fp.num_projects}}</td><td>{{fp.num_partners}}</td><td>{{fp.ecMaxContribution}}</td>
+                    <td><a href="{% url 'fprogramdb:project_list_fp' fp=fp.data.fp %}">{{fp.data}}</a></td><td>{{fp.num_projects|intcomma}}</td><td>{{fp.num_partners|intcomma}}</td><td>{{fp.ecMaxContribution|intcomma}}</td>
                 </tr>
             {% endfor %}
         </tbody>
