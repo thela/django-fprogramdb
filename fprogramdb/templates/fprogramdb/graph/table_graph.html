@@ -1,0 +1,28 @@
+
+
+<div class="row">
+    <div class="col-xs-2">{{series_label.0}}</div>
+    <div class="col-xs-5">{{series_label.1}}</div>
+    <div class="col-xs-5">{{series_label.2}}</div>
+</div>
+{% for item in table_data %}
+    <div class="row">
+        <div class="col-xs-2" id="dataseries_{{forloop.counter0}}">{% if item.label != item.label_ext %}{{item.label}} - {{item.label_ext}}{% else %}{{item.label}}{% endif %}</div>
+
+        {% for data in item.data %}
+            <div class="col-xs-5">
+                {{data.value}}
+                <a role="button" data-toggle="collapse" href="#ct-chart{{collapse_id}}-line{{forloop.parentloop.counter0}}-{{forloop.counter0}}" aria-expanded="false" aria-controls="collapseExample">
+                  <span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
+                </a>
+                <div class="collapse" id="ct-chart{{collapse_id}}-line{{forloop.parentloop.counter0}}-{{forloop.counter0}}">
+                    <div class="well">
+                        {% for project in data.projects %}
+                            <a href="http://cordis.europa.eu/project/rcn/{{project.0}}_en.html" style="font-size:8px">{{project.1}}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endfor %}

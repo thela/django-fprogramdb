@@ -11,7 +11,12 @@
         <tbody>
             {% for fp in fp_data %}
                 <tr>
-                    <td><a href="{% url 'fprogramdb:project_list_fp' fp=fp.data.fp %}">{{fp.data}}</a></td><td>{{fp.num_projects|intcomma}}</td><td>{{fp.num_partners|intcomma}}</td><td>{{fp.ecMaxContribution|intcomma}}</td>
+                    <td>
+                        <a href="{% url 'fprogramdb:project_list_fp' fp=fp.data.fp %}">{{fp.data}}</a>
+                        <a href="{% url 'fprogramdb:euodp_sources' fp=fp.data.fp %}"><i class="material-icons">mode_edit</i></a>
+                    </td>
+                    <td>{{fp.num_projects|intcomma}}</td>
+                    <td>{{fp.num_partners|intcomma}}</td><td>{{fp.ecMaxContribution|intcomma}}</td>
                 </tr>
             {% endfor %}
         </tbody>

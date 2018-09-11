@@ -5,8 +5,15 @@ from fprogramdb.models import Partner
 class PartnerForm(forms.ModelForm):
     class Meta:
         model = Partner
-        fields = '__all__'
+        exclude = [
+            'source', 'pic',
+            'merged', 'merged_ids', 'merged_with_id',
+        ]
 
+    def __init__(self, *args, **kwargs):
+        super(PartnerForm, self).__init__(*args, **kwargs)
+        for visible in self.visible_fields():
+            visible.field.widget.attrs['class'] = 'form-control'
 
 class PartnerId(forms.Form):
     partner_id = forms.IntegerField()

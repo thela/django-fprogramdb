@@ -1,24 +1,32 @@
 """fprogramdb URL Configuration
 """
 from django.conf.urls import url, include
+from django.urls import path, re_path
 
-from . import views, manage
+from . import views, manage, graph
 
 app_name = 'fprogramdb'
 
 fpdb_patterns = [
-    url(r'^fp(?P<fp>[\D][\w]+)', views.ProjectListFP.as_view(), name="project_list_fp"),
-    url(r'^pic(?P<pic>[0-9]+)', views.ProjectListPIC.as_view(), name="project_list_pic"),
-    url(r'^partner(?P<partner_id>[0-9]+)', views.ProjectListPIC.as_view(), name="project_list_id"),
-    url(r'^rcn(?P<rcn>[0-9]+)', views.ProjectDataRCN.as_view(), name="project_data_rcn"),
-    url(r'^', views.FrontPage.as_view(), name="frontpage"),
+    re_path(r'^fp(?P<fp>[\D][\w]+)', views.ProjectListFP.as_view(), name="project_list_fp"),
+    path(r'pic<int:pic>', views.DetailPIC.as_view(), name="detail_pic"),
+    path(r'pic<int:pic>/edit', views.EditPIC.as_view(), name="edit_pic"),
+    path(r'pic<int:pic>/project_list', views.ProjectListPIC.as_view(), name="project_list_pic"),
+    path(r'partner<int:partner_id>', views.ProjectListPIC.as_view(), name="project_list_id"),
+    path(r'rcn<int:rcn>', views.ProjectDataRCN.as_view(), name="project_data_rcn"),
+    path(r'', views.FrontPage.as_view(), name="frontpage"),
+]
+
+fpdb_graph_patterns = [
+    path('graph/<int:pic>', graph.PicHist.as_view(), name="pic_hist"),
 ]
 
 fpdb_manage_patterns = [
-    url(r'manage/euodp_sources', manage.PopulateEuodpSourcesView.as_view(), name="")
-    ]
+    path('manage/euodp_sources_fp<fp>', manage.PopulateEuodpSourcesView.as_view(), name="euodp_sources")
+]
 
 urlpatterns = [
-    url(r'^', include(fpdb_patterns)),
-    url(r'^', include(fpdb_manage_patterns)),
+    path('', include(fpdb_graph_patterns)),
+    path('', include(fpdb_manage_patterns)),
+    path('', include(fpdb_patterns)),
 ]

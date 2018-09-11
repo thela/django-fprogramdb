@@ -1,5 +1,29 @@
 {% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
 
 {% block content %}
+    {% for euodp_dict in euodp_datas %}
+        <div class="row">
+            <div class="col-xs-3">{{euodp_dict.euodp_data}}</div>
+            <div class="col-xs-3">{{euodp_dict.euodp_data.update_date}}</div>
+            <div class="col-xs-3">
+                {% if euodp_dict.refresh_date == '-' %}
+                    <a href="?check={{euodp_dict.attribute}}">check</a>
+                {% else %} {{euodp_dict.refresh_date}}{% endif %}
+            </div>
+            <div class="col-xs-3">
+                {% if euodp_dict.to_update == '-' %}
+                    <a href="?check={{euodp_dict.attribute}}">check</a>
+                {% else %}
+                    {% if euodp_dict.to_update %}
+                    <a href="?update={{euodp_dict.attribute}}">update</a>
 
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+    <div class="row">
+            <div class="col-xs-6"></div>
+        <div class="col-xs-3"><a href="?check=all">check all</a></div>
+    </div>
 {% endblock content %}

@@ -1,0 +1,107 @@
+{% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
+{% load i18n %}
+
+{% block other_heads %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        {% include "fprogramdb/head_buttons.html" %}
+    </div>
+    <h1>
+        {% if partner.pic %}{% endif %}
+        {% if partner.shortName %}{{partner.shortName}}{% else %}{{partner.legalName}}{% endif %}
+        {% if partner.pic %}{% endif %}
+        <a href="{% url 'fprogramdb:edit_pic' pic=partner.pic%}"><i class="material-icons">mode_edit</i></a>
+
+    </h1>
+    <div class="row"><div class="col-md-4">pic</div> <div class="col-md-6">{{partner.pic}}</div></div>
+    <div class="row"><div class="col-md-4">OrganizationActivityType</div> <div class="col-md-6">{{partner.get_organizationActivityType_display}}</div></div>
+    <div class="row"><div class="col-md-4">LegalName</div> <div class="col-md-6">{{partner.legalName}}</div>
+        <div class="col-md-2"><a class="collapse-similarities collapse" href="?similarity=legalName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a>
+        </div>
+    </div>
+    <div class="row"><div class="col-md-4">ShortName</div> <div class="col-md-6">{{partner.shortName}}</div>
+        <div class="col-md-2"><a class="collapse-similarities collapse" href="?similarity=shortName"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>
+    </div>
+    <div class="row"><div class="col-md-4">Street</div> <div class="col-md-6">{{partner.street}}</div>
+        <div class="col-md-2"><a class="collapse-similarities collapse" href="?similarity=street" aria-expanded="false"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> similarities</a></div>
+    </div>
+    <div class="row"><div class="col-md-4">City</div> <div class="col-md-6">{{partner.city}}</div></div>
+    <div class="row"><div class="col-md-4">Country</div> <div class="col-md-6">{{partner.country}}</div></div>
+    <div class="row"><div class="col-md-4">PostalCode</div> <div class="col-md-6">{{partner.postalCode}}</div></div>
+    <div class="row"><div class="col-md-4"><small><em>source</em></small></div> <div class="col-md-6"><small><em><a href="{{partner.source.euodp_page}}">{{partner.source.euodp_page}}</a> - last update {{partner.source.update_date}}</em></small></div></div>
+    <script>
+        window.addEventListener('load', function() {
+            $('.collapse-similarities').each(function(){$(this).collapse('hide')})
+            $(".similarities-button").on("click", function() {
+                $('.collapse-similarities').collapse('toggle');
+            });
+        })
+    </script>
+
+    {% if partner.merged %}
+        <div class="row"><div class="col-md-4">Merged with</div> <div class="col-md-6">
+            <a href="{% url 'fprogramdb:project_list_id' partner_id=partner.merged_with_id %}">{{partner.merged_with_id.acronym}}</a>
+        </div></div>
+    {% elif merged_ids %}
+        <div class="row">
+            <div class="col-md-4">
+                <a class="btn btn-primary" role="button" data-toggle="collapse" href="#collapseMerged" aria-expanded="false" aria-controls="collapseMerged">
+                  Merged Partners
+                </a>
+            </div>
+            <div class="col-md-6">
+                <div class="collapse" id="collapseMerged">
+                    <div class="well">
+                        <ul>{% for m_partner in merged_ids %}
+                            {% if m_partner.pic %}
+                                <li><a href="{% url 'fprogramdb:detail_pic' pic=m_partner.pic %}">{{m_partner}}</a></li>
+                            {% elif m_partner.pic %}
+                                <li><a href="{% url 'fprogramdb:project_list_id' partner_id=m_partner.id %}">{{m_partner}}</a></li>
+                            {% endif %}
+                        {% endfor %}</ul>
+                    </div>
+                </div>
+            </div>
+        <div class="row">
+            <div class="col-md-6">
+                <canvas id="p_chart" width="400" height="400"></canvas>
+            </div>
+        </div>
+        <script>
+            window.onload=function(){
+
+                var ctx = document.getElementById("p_chart");
+
+                var myLineChart = new Chart(ctx, {
+                    "type": "line",
+                    "data":{
+                        "labels":{{m_graph_labels|safe}},
+                        "datasets":[
+                        {% for dataset in m_graph_data %}
+                            {
+                                label: "{{dataset.label}}",
+                                data: {{dataset.data}},
+                                "fill": false,
+                                "borderColor": {{dataset.color|safe}},
+                                "lineTension": 0.1
+                            },
+                        {% endfor %}
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        title: {
+                            display: true,
+                            text: 'Posts per month'
+                        },
+                    }
+                });
+        }
+
+        </script>
+    {% endif %}
+{% endblock %}

@@ -2,12 +2,19 @@
 {% load i18n %}
 
 {% block content %}
-    <h1>
-        {% if partner.pic %}{% endif %}
-        {% if partner.shortName %}{{partner.shortName}}{% else %}{{partner.legalName}}{% endif %}
-        {% if partner.pic %}{% endif %}
+    <div class="row">
+        {% include "fprogramdb/head_buttons.html" %}
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <h1>
+                {% if partner.pic %}{% endif %}
+                {% if partner.shortName %}{{partner.shortName}}{% else %}{{partner.legalName}}{% endif %}
+                {% if partner.pic %}{% endif %}
 
-    </h1>
+            </h1>
+        </div>
+    </div>
     <div class="row"><div class="col-md-4">pic</div> <div class="col-md-6">{{partner.pic}}</div></div>
     <div class="row"><div class="col-md-4">OrganizationActivityType</div> <div class="col-md-6">{{partner.get_organizationActivityType_display}}</div></div>
     <div class="row"><div class="col-md-4">LegalName</div> <div class="col-md-6">{{partner.legalName}}</div>

@@ -28,7 +28,7 @@ class ProjectListFP(View):
     def get(self, request, fp):
         projects = Project.objects.filter(fp=fp).order_by('startDate')
         return render(request, self.template_name, {
-            'title': 'List of projects within {fp}'.format(fp=fp),
+            'page_name': 'List of projects within {fp}'.format(fp=fp),
             'projects': [
                 {
                     'data': [_p.fp, str(_p), _p.startDate, _p.ecMaxContribution],
@@ -46,7 +46,7 @@ class FrontPage(View):
     def get(self, request):
         #TODO show details of last update
         _context = {
-            'title': 'List o',
+            'page_name': 'List of Framework Programs',
             'fp_data': [],
             'fprogramdb_basetemplate': fprogramdb_basetemplate
         }
@@ -63,7 +63,61 @@ class FrontPage(View):
                 })
             except (KeyError, FpData.DoesNotExist):
                 pass
-        print(_context)
+        return render(request, self.template_name, _context)
+
+
+class DetailPIC(View):
+    template_name = "fprogramdb/detail_pic.html"
+    title = 'Detail of Partner {acronym}'
+
+    @method_decorator(login_required)
+    def get(self, request, pic, partnerformset=None, results_from_searchfield=None):
+        partner = Partner.objects.get(pic=pic)
+
+        _context = {
+            'page_name': self.title.format(acronym=partner.shortName),
+            'fprogramdb_basetemplate': fprogramdb_basetemplate,
+            'partner': partner,
+        }
+
+        if partner.merged_ids:
+            _context['merged_ids'] = [Partner.objects.get(id=_id) for _id in partner.merged_ids.split(',')]
+
+        return render(request, self.template_name, _context)
+
+
+class EditPIC(View):
+    template_name = "fprogramdb/edit_pic.html"
+    title = 'Edit of project with {acronym} in partnership'
+
+    @method_decorator(login_required)
+    def post(self, request, pic):
+        partner = Partner.objects.get(pic=pic)
+        partnerform = PartnerForm(request.POST, request.FILES, instance=partner)
+        if 'Save' in request.POST:
+            if partnerform.is_valid():
+                partnerform.save()
+                return redirect('fprogramdb:detail_pic', pic=pic)
+
+        return self.get(request, partner, partnerform)
+
+    @method_decorator(login_required)
+    def get(self, request, pic, partner=None, partnerform=None):
+        if not partner:
+            partner = Partner.objects.get(pic=pic)
+        if not partnerform:
+            partnerform = PartnerForm(instance=partner)
+
+        _context = {
+            'page_name': self.title.format(acronym=partner.shortName),
+            'fprogramdb_basetemplate': fprogramdb_basetemplate,
+            'partner': partner,
+            'partnerform': partnerform,
+        }
+
+        if partner.merged_ids:
+            _context['merged_ids'] = [Partner.objects.get(id=_id) for _id in partner.merged_ids.split(',')]
+
         return render(request, self.template_name, _context)
 
 
@@ -178,10 +232,11 @@ class ProjectListPIC(View):
                     formset = partnerformset(initial=_initial, prefix="merge_view")
 
         _context.update({
-            'title': 'List of project with {acronym} in partnership'.format(acronym=partner.shortName),
+            'page_name': 'List of project with {acronym} in partnership'.format(acronym=partner.shortName),
             'partner': partner,
             'merge_view_formset': formset,
-            'partner_search_form': partner_search_form
+            'partner_search_form': partner_search_form,
+            'fprogramdb_basetemplate': fprogramdb_basetemplate,
         })
         return render(request, self.template_name, _context)
 
@@ -195,7 +250,7 @@ class ProjectListPIC(View):
             pass
 
         _context = {
-            'title': self.title.format(acronym=partner.shortName),
+            'page_name': self.title.format(acronym=partner.shortName),
             'fprogramdb_basetemplate': fprogramdb_basetemplate,
             'partner': partner,
             'partner_search_form': PartnerSearch()
@@ -239,7 +294,6 @@ class ProjectListPIC(View):
 
         if partner.merged_ids:
             _context['merged_ids'] = [Partner.objects.get(id=_id) for _id in partner.merged_ids.split(',')]
-
         return render(request, self.template_name, _context)
 
 
@@ -252,7 +306,7 @@ class ProjectDataRCN(View):
             rcn=rcn
         )
         return render(request, "fprogramdb/project_data_rcn.html", {
-            'title': 'Detail of project {acronym}'.format(acronym=project.acronym),
+            'page_name': 'Detail of project {acronym}'.format(acronym=project.acronym),
             'project': project,
             'partnerprojects': PartnerProject.objects.filter(project=project),
             'fprogramdb_basetemplate': fprogramdb_basetemplate

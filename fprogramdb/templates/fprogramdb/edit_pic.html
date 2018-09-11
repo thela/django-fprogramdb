@@ -1,0 +1,29 @@
+{% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
+{% load i18n %}
+
+{% block other_heads %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        {% include "fprogramdb/head_buttons.html" %}
+    </div>
+    <h1>
+        {% if partner.pic %}{% endif %}
+        {% if partner.shortName %}{{partner.shortName}}{% else %}{{partner.legalName}}{% endif %}
+        {% if partner.pic %}{% endif %}
+
+    </h1>
+    <form method="post" action="">
+        {% csrf_token %}
+        {% for field in partnerform %}
+            <div class="form-group">
+                <div class="rw bg-danger">{{field.errors}}</div>
+                <label for="{{field.id_for_label}}" name="{{field.html_name}}" title="{{field.help_text}}">{{field.label}}</label>
+                {{field}}
+            </div>
+        {% endfor %}
+        <button class="btn btn-default" type="submit" name="Save">Save</button>
+    </form>
+{% endblock %}

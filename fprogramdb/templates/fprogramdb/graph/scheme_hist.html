@@ -1,0 +1,77 @@
+{% extends fprogramdb_basetemplate|default:"fprogramdb/base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+{% block other_heads %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        {% include "fprogramdb/head_buttons.html" %}
+    </div>
+    <h1>{{barchart.title}}</h1>
+    {% with chart_idnum=1 %}
+        <canvas id="myChart" width="100%"></canvas>
+
+        <div>
+            {% include "fprogramdb/graph/table_graph.html" %}
+
+        </div>
+
+        <script>
+            var ctx = document.getElementById("myChart").getContext('2d');
+            var myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [{% for label in barchart.labels %}'{{label| safe }}',{% endfor %}],
+                    datasets: [{
+                        label: '# of Projects',
+                        data: {{ barchart.series.0| safe }},
+                        borderWidth: 1,
+                        backgroundColor: 'rgba(54, 162, 235, .2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                    },
+                    {
+                        label: '# of Projects Coordinated',
+                        data: {{ barchart.series.1| safe }},
+                        borderWidth: 1,
+                        backgroundColor: 'rgba(255, 99, 132, .2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                    }]
+                },
+                options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero:true
+                            }
+                        }]
+                    },
+                    onClick: function graphClickEvent(event, array){
+                        if(array[0]){
+                            $('#ct-chart-line'+array[0]._index+'-'+this.getElementAtEvent(event)[0]._datasetIndex).collapse('toggle')
+                            document.getElementById('dataseries_'+array[0]._index).scrollIntoView();
+                        }
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                var label = data.datasets[tooltipItem.datasetIndex].label || '';
+
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += tooltipItem.yLabel;
+                                return label;
+                            }
+                        }
+                    }
+                }
+            });
+
+
+        </script>
+
+    {% endwith %}
+{% endblock %}
