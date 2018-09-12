@@ -31,7 +31,7 @@ class ProjectListFP(View):
             'page_name': 'List of projects within {fp}'.format(fp=fp),
             'projects': [
                 {
-                    'data': [_p.fp, str(_p), _p.startDate, _p.ecMaxContribution],
+                    'data': [_p.fp, str(_p), _p.partner_count(), _p.startDate, _p.ecMaxContribution],
                     'rcn': _p.rcn
                 }
                 for _p in projects],
@@ -71,8 +71,13 @@ class DetailPIC(View):
     title = 'Detail of Partner {acronym}'
 
     @method_decorator(login_required)
-    def get(self, request, pic, partnerformset=None, results_from_searchfield=None):
-        partner = Partner.objects.get(pic=pic)
+    def get(self, request, pic=None, partner_id=None):
+        if pic:
+            partner = Partner.objects.get(pic=pic)
+        elif partner_id:
+            partner = Partner.objects.get(id=partner_id)
+        else:
+            raise Partner.DoesNotExist
 
         _context = {
             'page_name': self.title.format(acronym=partner.shortName),
@@ -102,9 +107,14 @@ class EditPIC(View):
         return self.get(request, partner, partnerform)
 
     @method_decorator(login_required)
-    def get(self, request, pic, partner=None, partnerform=None):
+    def get(self, request, pic=None, partner=None, partnerform=None, partner_id=None):
         if not partner:
-            partner = Partner.objects.get(pic=pic)
+            if pic:
+                partner = Partner.objects.get(pic=pic)
+            elif partner_id:
+                partner = Partner.objects.get(id=partner_id)
+            else:
+                raise Partner.DoesNotExist
         if not partnerform:
             partnerform = PartnerForm(instance=partner)
 

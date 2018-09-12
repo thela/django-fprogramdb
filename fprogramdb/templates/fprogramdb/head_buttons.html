@@ -1,10 +1,22 @@
 
         <div class="col-md-2">
-            <a href="{% url 'fprogramdb:detail_pic' pic=partner.pic%}"><i class="material-icons">details</i></a>
+            {% if partner.pic %}
+                <a href="{% url 'fprogramdb:detail_pic' pic=partner.pic %}"><i class="material-icons">details</i></a>
+            {% else %}
+                <a href="{% url 'fprogramdb:edit_id' partner_id=partner.id %}"><i class="material-icons">details</i></a>
+            {% endif %}
         </div>
         <div class="col-md-2">
-            <a href="{% url 'fprogramdb:project_list_pic' pic=partner.pic%}"><i class="material-icons">list</i></a>
+            {% if partner.pic %}
+                <a href="{% url 'fprogramdb:project_list_pic' pic=partner.pic%}"><i class="material-icons">list</i></a>
+            {% else %}
+                <a href="{% url 'fprogramdb:project_list_id' partner_id=partner.id %}"><i class="material-icons">list</i></a>
+            {% endif %}
         </div>
         <div class="col-md-2">
-            <a href="{% url 'fprogramdb:pic_hist' pic=partner.pic%}"><i class="material-icons">show_chart</i></a>
+            {% if partner.pic %}
+                <a href="{% url 'fprogramdb:hist_pic' pic=partner.pic%}"><i class="material-icons">show_chart</i></a>
+            {% else %}
+                <a href="{% url 'fprogramdb:hist_id' partner_id=partner.id %}"><i class="material-icons">show_chart</i></a>
+            {% endif %}
         </div>

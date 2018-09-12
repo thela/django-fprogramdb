@@ -13,7 +13,12 @@
         {% if partner.pic %}{% endif %}
         {% if partner.shortName %}{{partner.shortName}}{% else %}{{partner.legalName}}{% endif %}
         {% if partner.pic %}{% endif %}
+
+        {% if partner.pic %}
         <a href="{% url 'fprogramdb:edit_pic' pic=partner.pic%}"><i class="material-icons">mode_edit</i></a>
+        {% else %}
+        <a href="{% url 'fprogramdb:edit_id' partner_id=partner.id%}"><i class="material-icons">mode_edit</i></a>
+        {% endif %}
 
     </h1>
     <div class="row"><div class="col-md-4">pic</div> <div class="col-md-6">{{partner.pic}}</div></div>

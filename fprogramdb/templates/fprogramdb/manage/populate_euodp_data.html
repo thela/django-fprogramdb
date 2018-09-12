@@ -15,8 +15,9 @@
                     <a href="?check={{euodp_dict.attribute}}">check</a>
                 {% else %}
                     {% if euodp_dict.to_update %}
-                    <a href="?update={{euodp_dict.attribute}}">update</a>
-
+                        <a href="?update={{euodp_dict.attribute}}">update</a>
+                    {% else %}
+                        up to date
                     {% endif %}
                 {% endif %}
             </div>

@@ -852,7 +852,7 @@ class Project(SourceData):
                 return u"{title}".format(title=self.title)
 
     def partner_count(self):
-        return PartnerProject.objects.filter(project=self).count()
+        return self.partnerproject_set.count()  # PartnerProject.objects.filter(project=self).count()
 
     def get_absolute_url(self):
         return reverse('fprogramdb:project_data_rcn', kwargs={'rcn': self.rcn})

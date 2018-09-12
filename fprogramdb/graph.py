@@ -84,9 +84,13 @@ class PicHist(View):
         return _res
 
     @method_decorator(login_required)
-    def get(self, request, pic):
-        partner = Partner.objects.get(pic=pic, merged=False)
-
+    def get(self, request, pic=None, partner_id=None):
+        if pic:
+            partner = Partner.objects.get(pic=pic, merged=False)
+        elif partner_id:
+            partner = Partner.objects.get(id=partner_id, merged=False)
+        if not partner:
+            raise Partner.DoesNotExist
         context = {
             'fprogramdb_basetemplate': fprogramdb_basetemplate,
             'title': self.title.format(acronym=partner.shortName),
